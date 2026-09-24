@@ -10,6 +10,7 @@ def log_action(
     object_id: int | None = None,
     old_value: str | None = None,
     new_value: str | None = None,
+    user_id: int | None = None,
 ) -> None:
     """Ajoute une entrée au journal d'audit (section 22, RB-028).
 
@@ -17,8 +18,15 @@ def log_action(
     transaction que le changement métier qu'elle trace, pour que les deux
     réussissent ou échouent ensemble.
     """
+    if user_id is None:
+        try:
+            if current_user is not None and getattr(current_user, "is_authenticated", False):
+                user_id = current_user.id
+        except Exception:
+            user_id = None
+
     entry = AuditLog(
-        user_id=current_user.id if current_user.is_authenticated else None,
+        user_id=user_id,
         action=action,
         object_type=object_type,
         object_id=object_id,

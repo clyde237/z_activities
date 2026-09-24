@@ -28,6 +28,22 @@
     </div>
   </div>
 
+  {% if pending_reports_count and pending_reports_count > 0 %}
+  <!-- Alerte de validation des rapports hebdomadaires (Chef de service - RB-023) -->
+  <div class="rounded-xl bg-blue-50 border border-blue-200 p-4 text-blue-900 text-xs flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span class="text-lg">📋</span>
+      <span>
+        <strong>Rapports hebdomadaires à valider :</strong>
+        {{ pending_reports_count }} rapport{{ "s" if pending_reports_count > 1 else "" }} soumis en attente de validation finale.
+      </span>
+    </div>
+    <a href="{{ url_for('reports.list_reports', status='soumis') }}" class="font-semibold text-blue-900 hover:underline">
+      Examiner et valider &rarr;
+    </a>
+  </div>
+  {% endif %}
+
   {% if stats.tasks_needing_update and stats.tasks_needing_update > 0 %}
   <!-- Alerte de suivi quotidien (CDC Section 11 & 12) -->
   <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-900 text-xs flex items-center justify-between">
@@ -43,6 +59,7 @@
     </a>
   </div>
   {% endif %}
+
 
   <!-- Indicateurs Clés d'Activité (CDC Section 18 / 19 / 20) -->
   <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -86,6 +103,56 @@
       <a href="{{ url_for('activities.list_activities') }}" class="text-[11px] text-slate-500 hover:text-slate-900 mt-1 inline-block">
         Consulter &rarr;
       </a>
+    </div>
+  </div>
+
+  <!-- Rapport hebdomadaire de la semaine en cours -->
+  <div class="bg-white p-5 rounded-xl shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border border-slate-100">
+    <div class="flex items-center gap-3">
+      <div class="rounded-xl bg-blue-100 p-3 text-blue-700 text-xl font-bold">
+        📋
+      </div>
+      <div>
+        <h3 class="font-bold text-slate-900 text-sm">
+          Rapport d'activités de la semaine (du {{ week_start.strftime('%d/%m') }} au {{ week_end.strftime('%d/%m/%Y') }})
+        </h3>
+        <p class="text-xs text-slate-500 mt-0.5">
+          {% if my_weekly_report %}
+            Statut actuel :
+            <span class="font-semibold uppercase tracking-wider px-2 py-0.5 rounded text-[10px]
+              {% if my_weekly_report.status.value == 'valide' %}bg-green-100 text-green-800
+              {% elif my_weekly_report.status.value == 'soumis' %}bg-amber-100 text-amber-800
+              {% else %}bg-slate-100 text-slate-700{% endif %}">
+              {{ my_weekly_report.status.value }}
+            </span>
+            {% if my_weekly_report.status.value == 'brouillon' %}
+              — N'oubliez pas de compléter votre synthèse et de soumettre votre rapport le vendredi.
+            {% elif my_weekly_report.status.value == 'soumis' %}
+              — Soumis le {{ my_weekly_report.submitted_at.strftime('%d/%m/%Y') }}, en attente de validation.
+            {% elif my_weekly_report.status.value == 'valide' %}
+              — Validé le {{ my_weekly_report.validated_at.strftime('%d/%m/%Y') }}.
+            {% endif %}
+          {% else %}
+            Le rapport hebdomadaire n'a pas encore été initialisé pour cette semaine.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if my_weekly_report %}
+        <a href="{{ url_for('reports.detail_report', id=my_weekly_report.id) }}"
+           class="inline-flex items-center bg-slate-900 text-white px-3.5 py-1.5 rounded-md text-xs font-medium hover:bg-slate-800 shadow-sm">
+          Consulter &rarr;
+        </a>
+      {% else %}
+        <form method="post" action="{{ url_for('reports.generate_current_report') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit"
+                  class="inline-flex items-center bg-blue-600 text-white px-3.5 py-1.5 rounded-md text-xs font-medium hover:bg-blue-700 shadow-sm">
+            Initialiser mon rapport &rarr;
+          </button>
+        </form>
+      {% endif %}
     </div>
   </div>
 

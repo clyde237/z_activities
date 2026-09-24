@@ -118,7 +118,19 @@ pytest
 - Avis / Commentaire de supervision de l'encadrement sur les activités imprévues
 - Traçabilité complète de chaque mise à jour et activité imprévue dans `audit_logs` (RB-028)
 
-**Reste à construire (phases 4 à 6 du CDC) :**
-- Phase 4 : Rapports hebdomadaires (génération auto vendredi, édition, soumission, validation, export Word).
+**Phase 4 (Rapports hebdomadaires et export Word) terminée :**
+- Génération automatique des rapports le vendredi pour tous les membres actifs (RB-020, commande `flask generate-weekly-reports`)
+- Création initiale en brouillon `BROUILLON` (RB-021)
+- Agrégation complète des activités de la semaine (tâches actives, terminées, en cours, en retard, activités imprévues, mises à jour, taux d'avancement)
+- Édition libre des synthèses narratives, difficultés, solutions et observations par le collaborateur avant soumission (RB-022)
+- Soumission du rapport par le membre au chef de service (`SOUMIS`)
+- Validation finale réservée exclusivement au Chef de service (`VALIDE`, RB-023) ou demande de révision (retour en `BROUILLON`)
+- Périmètre de consultation respecté : le chef d'équipe consulte les rapports des membres de ses équipes (RB-024)
+- Export natif du rapport au format Microsoft Word (`.docx`) conforme aux normes de la section 16 du CDC (en-tête Zingana, tables stylisées, signatures)
+- Intégration sur le tableau de bord des alertes de validation et du statut du rapport de la semaine courante
+- Traçabilité intégrale dans le journal d'audit (`audit_logs`)
+
+**Reste à construire (phases 5 et 6 du CDC) :**
 - Phase 5 : Tableaux de bord de supervision avancés avec graphiques (Chart.js) et recherche d'historique.
 - Phase 6 : Rapport mensuel départemental (consolidation, ajustement, finalisation, export).
+

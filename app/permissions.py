@@ -80,3 +80,42 @@ def can_update_task_progress(user: User, task) -> bool:
         return True
     return user.id in {task.responsible_id, task.co_responsible_id}
 
+
+def can_view_report(user: User, report) -> bool:
+    """RB-024: Le chef d'équipe peut consulter les rapports des membres de son équipe.
+    Le chef de service a accès à tous les rapports.
+    Le collaborateur accède à ses propres rapports."""
+    if user.role == UserRole.CHEF_SERVICE:
+        return True
+    if user.id == report.user_id:
+        return True
+    user_led_teams = {link.team_id for link in user.team_links if link.is_team_lead}
+    report_user_teams = {link.team_id for link in report.user.team_links}
+    return bool(user_led_teams.intersection(report_user_teams))
+
+
+def can_edit_report(user: User, report) -> bool:
+    """RB-022: Le membre peut modifier son rapport avant soumission."""
+    from .models import WeeklyReportStatus
+
+    if report.status == WeeklyReportStatus.VALIDE:
+        return False
+    if user.role == UserRole.CHEF_SERVICE:
+        return True
+    return user.id == report.user_id and report.status == WeeklyReportStatus.BROUILLON
+
+
+def can_submit_report(user: User, report) -> bool:
+    """Le membre peut soumettre son rapport lorsqu'il est en brouillon."""
+    from .models import WeeklyReportStatus
+
+    return user.id == report.user_id and report.status == WeeklyReportStatus.BROUILLON
+
+
+def can_validate_report(user: User, report) -> bool:
+    """RB-023: Le chef de service effectue la validation finale du rapport hebdomadaire."""
+    from .models import WeeklyReportStatus
+
+    return user.role == UserRole.CHEF_SERVICE and report.status == WeeklyReportStatus.SOUMIS
+
+

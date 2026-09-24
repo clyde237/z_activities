@@ -1,0 +1,388 @@
+{% extends "base.html" %}
+{% block title %}Rapport hebdomadaire - {{ report.user.full_name }}{% endblock %}
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+  <!-- Fil d'Ariane & Actions -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div class="space-y-1">
+      <div class="flex items-center gap-2 text-xs text-slate-500">
+        <a href="{{ url_for('reports.list_reports') }}" class="hover:underline">Rapports</a>
+        <span>/</span>
+        <span>Semaine du {{ report.period_start.strftime('%d/%m/%Y') }} au {{ report.period_end.strftime('%d/%m/%Y') }}</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900">
+        Rapport d'activités hebdomadaire
+      </h1>
+      <p class="text-xs text-slate-500">
+        Collaborateur : <strong>{{ report.user.full_name }}</strong> (@{{ report.user.username }})
+      </p>
+    </div>
+
+    <!-- Barre d'actions -->
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{{ url_for('reports.export_docx', id=report.id) }}"
+         class="inline-flex items-center rounded-md bg-white border border-slate-300 text-slate-700 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 shadow-sm">
+        📥 Télécharger (.docx)
+      </a>
+
+      {% if can_edit %}
+      <a href="{{ url_for('reports.edit_report', id=report.id) }}"
+         class="inline-flex items-center rounded-md bg-slate-900 text-white px-3 py-1.5 text-xs font-medium hover:bg-slate-800 shadow-sm">
+        ✎ Modifier la synthèse
+      </a>
+      {% endif %}
+
+      {% if can_submit %}
+      <form method="post" action="{{ url_for('reports.submit_report_action', id=report.id) }}"
+            onsubmit="return confirm('Êtes-vous sûr de vouloir soumettre votre rapport ? Il sera transmis au chef de service pour validation.');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit"
+                class="inline-flex items-center rounded-md bg-blue-600 text-white px-3.5 py-1.5 text-xs font-medium hover:bg-blue-700 shadow-sm">
+          🚀 Soumettre pour validation
+        </button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Banderole d'état du rapport -->
+  <div class="rounded-xl p-4 border
+    {% if report.status.value == 'valide' %}bg-green-50 border-green-200 text-green-900
+    {% elif report.status.value == 'soumis' %}bg-amber-50 border-amber-200 text-amber-900
+    {% else %}bg-slate-100 border-slate-200 text-slate-800{% endif %} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+    <div class="flex items-center gap-3">
+      <span class="text-xl">
+        {% if report.status.value == 'valide' %}✅{% elif report.status.value == 'soumis' %}⏳{% else %}✎{% endif %}
+      </span>
+      <div>
+        <p class="font-semibold text-sm">
+          Statut : {{ report.status.value.upper() }}
+        </p>
+        <p class="text-[11px] opacity-80">
+          {% if report.status.value == 'valide' %}
+            Rapport validé le {{ report.validated_at.strftime('%d/%m/%Y à %H:%M') }} par {{ report.validated_by.full_name if report.validated_by else 'Chef de service' }}.
+          {% elif report.status.value == 'soumis' %}
+            Soumis le {{ report.submitted_at.strftime('%d/%m/%Y à %H:%M') }} — en attente de la validation finale du chef de service.
+          {% else %}
+            Rapport en cours de rédaction par le collaborateur (brouillon).
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <!-- Actions Chef de Service (Validation / Révision) -->
+    {% if can_validate or can_reject %}
+    <div class="flex items-center gap-2 pt-2 sm:pt-0">
+      {% if can_validate %}
+      <button onclick="document.getElementById('modal-validate').classList.remove('hidden')"
+              class="bg-green-700 text-white px-3 py-1.5 rounded-md font-medium hover:bg-green-800 shadow-sm text-xs">
+        ✓ Valider le rapport
+      </button>
+      {% endif %}
+
+      {% if can_reject %}
+      <button onclick="document.getElementById('modal-reject').classList.remove('hidden')"
+              class="bg-amber-700 text-white px-3 py-1.5 rounded-md font-medium hover:bg-amber-800 shadow-sm text-xs">
+        ↩ Demander une révision
+      </button>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Cartes KPI de la semaine -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
+      <div class="text-[11px] font-medium text-slate-500">Tâches actives</div>
+      <div class="text-xl font-bold text-slate-900 mt-1">{{ data.stats.total_tasks }}</div>
+    </div>
+    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
+      <div class="text-[11px] font-medium text-slate-500">Terminées</div>
+      <div class="text-xl font-bold text-green-600 mt-1">{{ data.stats.completed_count }}</div>
+    </div>
+    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
+      <div class="text-[11px] font-medium text-slate-500">En cours</div>
+      <div class="text-xl font-bold text-blue-600 mt-1">{{ data.stats.in_progress_count }}</div>
+    </div>
+    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
+      <div class="text-[11px] font-medium text-slate-500">En retard</div>
+      <div class="text-xl font-bold text-red-600 mt-1">{{ data.stats.late_count }}</div>
+    </div>
+    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
+      <div class="text-[11px] font-medium text-slate-500">Imprévues</div>
+      <div class="text-xl font-bold text-purple-600 mt-1">{{ data.stats.unexpected_count }}</div>
+    </div>
+    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
+      <div class="text-[11px] font-medium text-slate-500">Avancement</div>
+      <div class="text-xl font-bold text-indigo-600 mt-1">{{ data.stats.average_progress }} %</div>
+    </div>
+  </div>
+
+  <!-- 1. Tâches planifiées et réalisées -->
+  <div class="bg-white p-6 rounded-xl shadow space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+        <span>📋</span> Tâches planifiées et réalisées
+      </h2>
+      <span class="text-xs text-slate-400">{{ data.tasks|length }} tâche(s)</span>
+    </div>
+
+    {% if data.tasks %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead class="bg-slate-50 text-slate-600 text-left uppercase tracking-wider">
+          <tr>
+            <th class="px-3 py-2">Tâche</th>
+            <th class="px-3 py-2">Équipe</th>
+            <th class="px-3 py-2">Échéance</th>
+            <th class="px-3 py-2">Statut</th>
+            <th class="px-3 py-2">Avancement</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for t in data.tasks %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2.5">
+              <a href="{{ url_for('tasks.detail_task', id=t.id) }}" class="font-medium text-slate-900 hover:text-blue-600">
+                {{ t.title }}
+              </a>
+              {% if t.is_late(report.period_end) and t.status.value != 'terminee' %}
+              <span class="ml-1 text-[10px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded">En retard</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-2.5 text-slate-600">{{ t.team.name if t.team else '-' }}</td>
+            <td class="px-3 py-2.5 text-slate-500 whitespace-nowrap">{{ t.due_date.strftime('%d/%m/%Y') if t.due_date else '-' }}</td>
+            <td class="px-3 py-2.5 whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase
+                {% if t.status.value == 'terminee' %}bg-green-100 text-green-800
+                {% elif t.status.value == 'en_cours' %}bg-blue-100 text-blue-800
+                {% elif t.status.value == 'bloquee' %}bg-red-100 text-red-800
+                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                {{ t.status.value }}
+              </span>
+            </td>
+            <td class="px-3 py-2.5 w-32">
+              <div class="flex items-center gap-2">
+                <div class="w-full bg-slate-200 rounded-full h-1.5">
+                  <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ t.progress }}%"></div>
+                </div>
+                <span class="text-slate-600 font-medium text-[11px]">{{ t.progress|int }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-xs text-slate-400 italic">Aucune tâche planifiée ou traitée sur cette semaine.</p>
+    {% endif %}
+  </div>
+
+  <!-- 2. Activités imprévues -->
+  <div class="bg-white p-6 rounded-xl shadow space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+        <span>⚡</span> Activités imprévues de la semaine
+      </h2>
+      <span class="text-xs text-slate-400">{{ data.unexpected_activities|length }} activité(s)</span>
+    </div>
+
+    {% if data.unexpected_activities %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead class="bg-slate-50 text-slate-600 text-left uppercase tracking-wider">
+          <tr>
+            <th class="px-3 py-2">Date</th>
+            <th class="px-3 py-2">Activité</th>
+            <th class="px-3 py-2">Demandeur</th>
+            <th class="px-3 py-2">Priorité</th>
+            <th class="px-3 py-2">Résultat / Avis superviseur</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for act in data.unexpected_activities %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2.5 text-slate-500 whitespace-nowrap">{{ act.activity_date.strftime('%d/%m/%Y') }}</td>
+            <td class="px-3 py-2.5 font-medium text-slate-900">{{ act.title }}</td>
+            <td class="px-3 py-2.5 text-slate-600">{{ act.requester or '-' }}</td>
+            <td class="px-3 py-2.5">
+              <span class="px-1.5 py-0.5 rounded text-[10px] uppercase font-semibold
+                {% if act.priority.value in ['urgente', 'haute'] %}bg-red-100 text-red-800{% else %}bg-slate-100 text-slate-700{% endif %}">
+                {{ act.priority.value }}
+              </span>
+            </td>
+            <td class="px-3 py-2.5 text-slate-600">
+              {% if act.result %}<div>{{ act.result }}</div>{% endif %}
+              {% if act.responsible_comment %}
+              <div class="text-[11px] text-blue-700 italic mt-0.5">💬 Avis : {{ act.responsible_comment }}</div>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-xs text-slate-400 italic">Aucune activité imprévue déclarée sur cette semaine.</p>
+    {% endif %}
+  </div>
+
+  <!-- 3. Analyse & Synthèse Narrative -->
+  <div class="bg-white p-6 rounded-xl shadow space-y-4">
+    <div class="border-b border-slate-100 pb-3">
+      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+        <span>📝</span> Analyse et synthèse de la semaine
+      </h2>
+    </div>
+
+    <div class="space-y-4 text-xs">
+      <div>
+        <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1">Synthèse narrative des travaux réalisés :</h3>
+        <div class="p-3 bg-slate-50 rounded-lg text-slate-700 border border-slate-100 whitespace-pre-line leading-relaxed">
+          {{ report.narrative_summary or 'Aucune synthèse narrative rédigée.' }}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1">Difficultés rencontrées :</h3>
+          <div class="p-3 bg-slate-50 rounded-lg text-slate-700 border border-slate-100 whitespace-pre-line leading-relaxed min-h-[60px]">
+            {{ report.difficulties or 'Aucune difficulté particulière signalée.' }}
+          </div>
+        </div>
+
+        <div>
+          <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1">Solutions apportées ou proposées :</h3>
+          <div class="p-3 bg-slate-50 rounded-lg text-slate-700 border border-slate-100 whitespace-pre-line leading-relaxed min-h-[60px]">
+            {{ report.solutions or 'Non renseigné.' }}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1">Observations & remarques de supervision :</h3>
+        <div class="p-3 bg-blue-50/50 rounded-lg text-slate-800 border border-blue-100 whitespace-pre-line leading-relaxed">
+          {{ report.observations or 'Aucune observation enregistrée.' }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Signatures et Validation -->
+  <div class="bg-white p-6 rounded-xl shadow space-y-4">
+    <div class="border-b border-slate-100 pb-3">
+      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+        <span>✍️</span> Visa et approbation hiérarchique
+      </h2>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+      <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+        <div class="font-bold text-slate-900 mb-1">Le Collaborateur</div>
+        <div class="text-slate-600">{{ report.user.full_name }}</div>
+        <div class="text-[11px] text-slate-400 mt-2">
+          {% if report.submitted_at %}
+          ✓ Soumis le {{ report.submitted_at.strftime('%d/%m/%Y à %H:%M') }}
+          {% else %}
+          ⏳ Non encore soumis
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+        <div class="font-bold text-slate-900 mb-1">Le Chef d'Équipe</div>
+        <div class="text-slate-600">Visa / Consultation équipe</div>
+        <div class="text-[11px] text-slate-400 mt-2">
+          Périmètre de consultation respecté (RB-024)
+        </div>
+      </div>
+
+      <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+        <div class="font-bold text-slate-900 mb-1">Le Chef de Service</div>
+        <div class="text-slate-600">Validation finale (RB-023)</div>
+        <div class="text-[11px] mt-2">
+          {% if report.validated_at %}
+          <span class="text-green-700 font-semibold">✓ Validé le {{ report.validated_at.strftime('%d/%m/%Y à %H:%M') }}</span>
+          <div class="text-slate-500 text-[10px]">par {{ report.validated_by.full_name if report.validated_by else 'Chef de service' }}</div>
+          {% else %}
+          <span class="text-slate-400 italic">En attente de validation</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Validation (Chef de Service) -->
+{% if can_validate %}
+<div id="modal-validate" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <h3 class="font-bold text-slate-900 text-sm">Valider le rapport hebdomadaire</h3>
+      <button onclick="document.getElementById('modal-validate').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
+    </div>
+    <form method="post" action="{{ url_for('reports.validate_report_action', id=report.id) }}" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p class="text-xs text-slate-600">
+        Vous êtes sur le point de procéder à la validation finale du rapport de <strong>{{ report.user.full_name }}</strong> pour la semaine du {{ report.period_start.strftime('%d/%m/%Y') }}.
+      </p>
+      <div>
+        <label for="val_observations" class="block text-xs font-medium text-slate-700 mb-1">
+          Observations / Félicitations / Remarques (optionnel) :
+        </label>
+        <textarea id="val_observations" name="observations" rows="3"
+                  class="w-full text-xs rounded-md border border-slate-300 p-2 focus:ring-1 focus:ring-green-500"
+                  placeholder="Ex : Travail satisfaisant, objectifs de la semaine atteints..."></textarea>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('modal-validate').classList.add('hidden')"
+                class="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-600 hover:bg-slate-50">
+          Annuler
+        </button>
+        <button type="submit"
+                class="px-4 py-1.5 rounded-md bg-green-700 text-white text-xs font-medium hover:bg-green-800 shadow">
+          Confirmer la validation
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal Demande de Révision (Chef de Service) -->
+{% if can_reject %}
+<div id="modal-reject" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <h3 class="font-bold text-slate-900 text-sm">Demander une révision</h3>
+      <button onclick="document.getElementById('modal-reject').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
+    </div>
+    <form method="post" action="{{ url_for('reports.reject_report_action', id=report.id) }}" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p class="text-xs text-slate-600">
+        Le rapport sera renvoyé en <strong>brouillon</strong> au collaborateur pour qu'il le modifie et le soumette à nouveau.
+      </p>
+      <div>
+        <label for="reason" class="block text-xs font-medium text-slate-700 mb-1">
+          Motif de la révision / Éléments à compléter :
+        </label>
+        <textarea id="reason" name="reason" rows="3" required
+                  class="w-full text-xs rounded-md border border-slate-300 p-2 focus:ring-1 focus:ring-amber-500"
+                  placeholder="Ex : Merci de détailler les causes du retard sur la tâche de réconciliation bancaire..."></textarea>
+      </div>
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('modal-reject').classList.add('hidden')"
+                class="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-600 hover:bg-slate-50">
+          Annuler
+        </button>
+        <button type="submit"
+                class="px-4 py-1.5 rounded-md bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 shadow">
+          Renvoyer en brouillon
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -47,3 +47,18 @@ def register_cli(app: Flask) -> None:
         db.session.add(user)
         db.session.commit()
         click.echo(f"Chef de service '{username}' créé.")
+
+    @app.cli.command("generate-weekly-reports")
+    @click.option("--date", "target_date_str", default=None, help="Date de référence (YYYY-MM-DD), par défaut aujourd'hui")
+    def generate_weekly_reports_cmd(target_date_str: str | None) -> None:
+        """Génère automatiquement les rapports hebdomadaires en brouillon (RB-020, RB-021)."""
+        from datetime import datetime
+        from .services.report_service import generate_weekly_reports_for_all
+
+        target_date = None
+        if target_date_str:
+            target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+
+        reports = generate_weekly_reports_for_all(target_date=target_date)
+        click.echo(f"Génération terminée : {len(reports)} rapport(s) hebdomadaire(s) généré(s) ou vérifié(s).")
+

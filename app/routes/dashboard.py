@@ -4,7 +4,16 @@ from flask import Blueprint, render_template
 from flask_login import current_user, login_required
 
 from ..extensions import db
-from ..models import Task, TaskStatus, Team, UnexpectedActivity, User
+from ..models import (
+    Task,
+    TaskStatus,
+    Team,
+    UnexpectedActivity,
+    User,
+    WeeklyReport,
+    WeeklyReportStatus,
+)
+from ..services.report_service import get_week_bounds
 
 dashboard_blueprint = Blueprint("dashboard", __name__)
 
@@ -13,12 +22,27 @@ dashboard_blueprint = Blueprint("dashboard", __name__)
 @login_required
 def index():
     today = date.today()
+    week_start, week_end = get_week_bounds(today)
     supervised_teams = []
     stats = {}
+
+    # Rapport hebdomadaire personnel pour la semaine courante
+    my_weekly_report = (
+        db.session.query(WeeklyReport)
+        .filter_by(user_id=current_user.id, period_start=week_start)
+        .one_or_none()
+    )
+
+    pending_reports_count = 0
 
     if current_user.is_chef_service():
         all_tasks = db.session.query(Task).all()
         activities_count = db.session.query(UnexpectedActivity).count()
+        pending_reports_count = (
+            db.session.query(WeeklyReport)
+            .filter_by(status=WeeklyReportStatus.SOUMIS)
+            .count()
+        )
         tasks_needing_update = sum(
             1 for t in all_tasks
             if t.status == TaskStatus.EN_COURS and not any(u.created_at.date() == today for u in t.updates)
@@ -32,6 +56,7 @@ def index():
             "tasks_late": sum(1 for t in all_tasks if t.is_late(today)),
             "activities_count": activities_count,
             "tasks_needing_update": tasks_needing_update,
+            "pending_reports_count": pending_reports_count,
         }
         recent_tasks = (
             db.session.query(Task)
@@ -77,4 +102,9 @@ def index():
         supervised_teams=supervised_teams,
         stats=stats,
         recent_tasks=recent_tasks,
+        my_weekly_report=my_weekly_report,
+        week_start=week_start,
+        week_end=week_end,
+        pending_reports_count=pending_reports_count,
     )
+

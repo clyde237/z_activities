@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}Éditer le rapport hebdomadaire{% endblock %}
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+  <div class="flex items-center justify-between">
+    <div>
+      <div class="flex items-center gap-2 text-xs text-slate-500 mb-1">
+        <a href="{{ url_for('reports.list_reports') }}" class="hover:underline">Rapports</a>
+        <span>/</span>
+        <a href="{{ url_for('reports.detail_report', id=report.id) }}" class="hover:underline">Détail</a>
+        <span>/</span>
+        <span>Édition</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900">
+        Compléter le rapport hebdomadaire
+      </h1>
+      <p class="text-xs text-slate-500">
+        Période du {{ report.period_start.strftime('%d/%m/%Y') }} au {{ report.period_end.strftime('%d/%m/%Y') }}
+        — Statut actuel : <span class="uppercase font-semibold">{{ report.status.value }}</span>
+      </p>
+    </div>
+    <div>
+      <a href="{{ url_for('reports.detail_report', id=report.id) }}"
+         class="text-xs text-slate-600 hover:text-slate-900 px-3 py-1.5 border border-slate-300 rounded-md">
+        Annuler
+      </a>
+    </div>
+  </div>
+
+  <form method="post" class="space-y-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Synthèse narrative -->
+    <div class="bg-white p-6 rounded-xl shadow space-y-4">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <span>📝</span> Synthèse des travaux réalisés (RB-022)
+      </h2>
+      <p class="text-xs text-slate-500">
+        Résumez les activités marquantes, les résultats obtenus et l'avancement global durant cette semaine.
+      </p>
+      <div>
+        <label for="narrative_summary" class="block text-xs font-medium text-slate-700 mb-1">
+          Synthèse narrative :
+        </label>
+        <textarea id="narrative_summary" name="narrative_summary" rows="5"
+                  class="w-full text-xs rounded-md border border-slate-300 p-3 focus:ring-1 focus:ring-slate-900"
+                  placeholder="Ex : Cette semaine, l'équipe a finalisé le rapprochement bancaire des comptes principaux et traité 85% des factures fournisseurs...">{{ report.narrative_summary or '' }}</textarea>
+      </div>
+    </div>
+
+    <!-- Difficultés et solutions -->
+    <div class="bg-white p-6 rounded-xl shadow space-y-4">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <span>⚠️</span> Difficultés et solutions
+      </h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="difficulties" class="block text-xs font-medium text-slate-700 mb-1">
+            Difficultés rencontrées :
+          </label>
+          <textarea id="difficulties" name="difficulties" rows="4"
+                    class="w-full text-xs rounded-md border border-slate-300 p-3 focus:ring-1 focus:ring-slate-900"
+                    placeholder="Ex : Retards dans la transmission des pièces par le service des achats, lenteur réseau...">{{ report.difficulties or '' }}</textarea>
+        </div>
+
+        <div>
+          <label for="solutions" class="block text-xs font-medium text-slate-700 mb-1">
+            Solutions apportées ou préconisées :
+          </label>
+          <textarea id="solutions" name="solutions" rows="4"
+                    class="w-full text-xs rounded-md border border-slate-300 p-3 focus:ring-1 focus:ring-slate-900"
+                    placeholder="Ex : Relance téléphonique effectuée, priorité donnée aux dossiers urgents...">{{ report.solutions or '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observations -->
+    <div class="bg-white p-6 rounded-xl shadow space-y-4">
+      <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+        <span>💡</span> Observations et perspectives pour la semaine suivante
+      </h2>
+      <div>
+        <label for="observations" class="block text-xs font-medium text-slate-700 mb-1">
+          Observations :
+        </label>
+        <textarea id="observations" name="observations" rows="3"
+                  class="w-full text-xs rounded-md border border-slate-300 p-3 focus:ring-1 focus:ring-slate-900"
+                  placeholder="Ex : Prévoir une session de clôture mensuelle jeudi prochain...">{{ report.observations or '' }}</textarea>
+      </div>
+    </div>
+
+    <!-- Boutons d'action -->
+    <div class="flex items-center justify-end gap-3 pt-2">
+      <button type="submit" name="action" value="save"
+              class="px-4 py-2 rounded-md border border-slate-300 bg-white text-slate-700 text-xs font-medium hover:bg-slate-50 shadow-sm">
+        💾 Enregistrer le brouillon
+      </button>
+
+      <button type="submit" name="action" value="submit"
+              onclick="return confirm('Enregistrer et soumettre directement votre rapport au chef de service ?');"
+              class="px-4 py-2 rounded-md bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 shadow-sm">
+        🚀 Enregistrer et Soumettre
+      </button>
+    </div>
+  </form>
+
+  <!-- Aide-mémoire : Activités de la semaine -->
+  <div class="bg-slate-100 p-4 rounded-xl border border-slate-200 text-xs space-y-3">
+    <div class="font-bold text-slate-800 flex items-center justify-between">
+      <span>Rappel de vos activités de la semaine</span>
+      <span class="text-[11px] text-slate-500 font-normal">
+        {{ data.tasks|length }} tâche(s), {{ data.unexpected_activities|length }} activité(s) imprévue(s)
+      </span>
+    </div>
+
+    {% if data.tasks %}
+    <div class="bg-white rounded-lg p-3 border border-slate-200 space-y-1">
+      <div class="font-semibold text-slate-700 text-[11px]">Tâches :</div>
+      <ul class="list-disc list-inside space-y-1 text-slate-600">
+        {% for t in data.tasks %}
+        <li>
+          <strong>{{ t.title }}</strong>
+          — {{ t.status.value.replace('_', ' ') }} ({{ t.progress|int }}%)
+          {% if t.due_date %}<span class="text-slate-400">échéance {{ t.due_date.strftime('%d/%m') }}</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if data.unexpected_activities %}
+    <div class="bg-white rounded-lg p-3 border border-slate-200 space-y-1">
+      <div class="font-semibold text-slate-700 text-[11px]">Activités imprévues :</div>
+      <ul class="list-disc list-inside space-y-1 text-slate-600">
+        {% for act in data.unexpected_activities %}
+        <li>
+          <strong>{{ act.title }}</strong> (le {{ act.activity_date.strftime('%d/%m') }})
+          {% if act.result %}— {{ act.result }}{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
