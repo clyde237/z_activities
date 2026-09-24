@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Journal d'audit - Traçabilité{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Journal d'audit & Traçabilité</h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Historique inaltérable des actions importantes (créations, modifications, soumissions, validations - CDC Section 22, RB-028).
+      </p>
+    </div>
+  </div>
+
+  <!-- Barre de filtres -->
+  <div class="bg-white p-4 rounded-xl shadow space-y-3">
+    <form method="get" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+      <div>
+        <label for="user_id" class="block font-medium text-slate-600 mb-1">Auteur de l'action</label>
+        <select id="user_id" name="user_id" class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+          <option value="">Tous les utilisateurs</option>
+          {% for u in users %}
+          <option value="{{ u.id }}" {% if current_user_id == u.id %}selected{% endif %}>
+            {{ u.full_name }} (@{{ u.username }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="object_type" class="block font-medium text-slate-600 mb-1">Type d'entité</label>
+        <select id="object_type" name="object_type" class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+          <option value="">Toutes les entités</option>
+          {% for ot in distinct_types %}
+          <option value="{{ ot }}" {% if current_object_type == ot %}selected{% endif %}>
+            {{ ot }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="action" class="block font-medium text-slate-600 mb-1">Action</label>
+        <select id="action" name="action" class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+          <option value="">Toutes les actions</option>
+          {% for act in distinct_actions %}
+          <option value="{{ act }}" {% if current_action == act %}selected{% endif %}>
+            {{ act }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="date" class="block font-medium text-slate-600 mb-1">Date</label>
+        <input type="date" id="date" name="date" value="{{ current_date or '' }}"
+               class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+      </div>
+
+      <div class="sm:col-span-2 md:col-span-4 flex items-center justify-between pt-2 border-t border-slate-100">
+        <div class="flex items-center gap-2">
+          <button type="submit" class="bg-slate-900 text-white px-3.5 py-1.5 rounded-md font-medium hover:bg-slate-800">
+            Filtrer
+          </button>
+          {% if current_user_id or current_object_type or current_action or current_date %}
+          <a href="{{ url_for('audit.list_audit_logs') }}" class="text-slate-500 hover:text-slate-900 underline ml-2">
+            Réinitialiser
+          </a>
+          {% endif %}
+        </div>
+        <span class="text-slate-400">
+          {{ logs|length }} enregistrement{{ "s" if logs|length > 1 else "" }} (limité aux 200 derniers)
+        </span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Table du journal d'audit -->
+  <div class="bg-white rounded-xl shadow overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-100 text-left text-xs uppercase text-slate-600 tracking-wider">
+        <tr>
+          <th class="px-4 py-3">Date & Heure</th>
+          <th class="px-4 py-3">Utilisateur</th>
+          <th class="px-4 py-3">Action</th>
+          <th class="px-4 py-3">Entité & ID</th>
+          <th class="px-4 py-3">Détails de la modification</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100 font-mono text-xs">
+        {% for entry in logs %}
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="px-4 py-3 whitespace-nowrap text-slate-500">
+            {{ entry.created_at.strftime('%d/%m/%Y %H:%M:%S') }}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap font-sans">
+            {% if entry.user %}
+              <span class="font-medium text-slate-900">{{ entry.user.full_name }}</span>
+              <span class="text-[11px] text-slate-400 block font-mono">@{{ entry.user.username }}</span>
+            {% else %}
+              <span class="text-slate-400 italic">Système / CLI</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <span class="px-2 py-0.5 rounded text-[11px] font-semibold uppercase
+              {% if entry.action == 'create' %}bg-green-100 text-green-800
+              {% elif entry.action == 'validate' %}bg-blue-100 text-blue-800
+              {% elif entry.action == 'submit' %}bg-amber-100 text-amber-800
+              {% elif entry.action == 'delete' %}bg-red-100 text-red-800
+              {% else %}bg-slate-100 text-slate-700{% endif %}">
+              {{ entry.action }}
+            </span>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap text-slate-700">
+            <strong>{{ entry.object_type }}</strong>
+            {% if entry.object_id %}#{{ entry.object_id }}{% endif %}
+          </td>
+          <td class="px-4 py-3 font-sans text-xs text-slate-600">
+            {% if entry.old_value and entry.new_value %}
+              <div class="line-through text-slate-400 text-[11px]">{{ entry.old_value }}</div>
+              <div class="text-slate-900 font-medium">&rarr; {{ entry.new_value }}</div>
+            {% elif entry.new_value %}
+              <span class="text-slate-800">{{ entry.new_value }}</span>
+            {% elif entry.old_value %}
+              <span class="text-slate-400">Ancienne valeur : {{ entry.old_value }}</span>
+            {% else %}
+              <span class="text-slate-400 italic">-</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="px-4 py-8 text-center text-slate-400 text-xs font-sans">
+            Aucun enregistrement trouvé dans le journal d'audit selon vos critères.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

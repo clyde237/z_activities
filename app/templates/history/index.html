@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Historique & Recherche d'activités{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Recherche & Historique transversal</h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Consultez l'historique complet des tâches, mises à jour quotidiennes, activités imprévues et rapports (CDC Section 21, RB-030).
+      </p>
+    </div>
+  </div>
+
+  <!-- Formulaire de recherche et filtres -->
+  <div class="bg-white p-5 rounded-xl shadow space-y-4">
+    <form method="get" class="space-y-3">
+      <!-- Barre de recherche textuelle principale -->
+      <div>
+        <label for="q" class="block text-xs font-semibold text-slate-700 mb-1">
+          Mots-clés (titre, description, difficultés, résultats...) :
+        </label>
+        <div class="relative">
+          <input type="text" id="q" name="q" value="{{ q or '' }}"
+                 placeholder="Ex : rapprochement bancaire, facture, inventaire, relance..."
+                 class="w-full text-sm rounded-lg border border-slate-300 px-4 py-2.5 pl-10 focus:ring-2 focus:ring-slate-900 focus:outline-none">
+          <span class="absolute left-3.5 top-3 text-slate-400 text-sm">🔍</span>
+        </div>
+      </div>
+
+      <!-- Filtres avancés -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs pt-1">
+        <div>
+          <label for="type" class="block font-medium text-slate-600 mb-1">Type d'élément</label>
+          <select id="type" name="type" class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+            <option value="all" {% if current_type == 'all' or not current_type %}selected{% endif %}>Tous les types</option>
+            <option value="task" {% if current_type == 'task' %}selected{% endif %}>Tâches planifiées</option>
+            <option value="update" {% if current_type == 'update' %}selected{% endif %}>Mises à jour quotidiennes</option>
+            <option value="activity" {% if current_type == 'activity' %}selected{% endif %}>Activités imprévues</option>
+            <option value="report" {% if current_type == 'report' %}selected{% endif %}>Rapports hebdomadaires</option>
+          </select>
+        </div>
+
+        {% if selectable_users %}
+        <div>
+          <label for="user_id" class="block font-medium text-slate-600 mb-1">Collaborateur</label>
+          <select id="user_id" name="user_id" class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+            <option value="">Tous les membres</option>
+            {% for u in selectable_users %}
+            <option value="{{ u.id }}" {% if current_user_id == u.id %}selected{% endif %}>
+              {{ u.full_name }} (@{{ u.username }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        {% if selectable_teams %}
+        <div>
+          <label for="team_id" class="block font-medium text-slate-600 mb-1">Équipe</label>
+          <select id="team_id" name="team_id" class="w-full rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+            <option value="">Toutes les équipes</option>
+            {% for tm in selectable_teams %}
+            <option value="{{ tm.id }}" {% if current_team_id == tm.id %}selected{% endif %}>
+              {{ tm.name }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label for="start_date" class="block font-medium text-slate-600 mb-1">Depuis</label>
+            <input type="date" id="start_date" name="start_date" value="{{ current_start_date or '' }}"
+                   class="w-full rounded-md border border-slate-300 px-2 py-1.5 bg-white text-xs">
+          </div>
+          <div>
+            <label for="end_date" class="block font-medium text-slate-600 mb-1">Jusqu'au</label>
+            <input type="date" id="end_date" name="end_date" value="{{ current_end_date or '' }}"
+                   class="w-full rounded-md border border-slate-300 px-2 py-1.5 bg-white text-xs">
+          </div>
+        </div>
+      </div>
+
+      <!-- Boutons -->
+      <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+        <div class="flex items-center gap-2">
+          <button type="submit" class="bg-slate-900 text-white px-4 py-1.5 rounded-md text-xs font-medium hover:bg-slate-800">
+            Rechercher dans l'historique
+          </button>
+          {% if q or current_user_id or current_team_id or current_start_date or current_end_date or (current_type and current_type != 'all') %}
+          <a href="{{ url_for('history.search_history') }}" class="text-xs text-slate-500 hover:text-slate-900 underline ml-2">
+            Réinitialiser
+          </a>
+          {% endif %}
+        </div>
+        <span class="text-xs text-slate-400">
+          {{ results|length }} résultat{{ "s" if results|length > 1 else "" }}
+        </span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Liste des résultats chronologiques -->
+  <div class="space-y-3">
+    {% for res in results %}
+    <div class="bg-white p-4 rounded-xl shadow border border-slate-100 hover:border-slate-300 transition">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider
+            {% if res.badge_color == 'blue' %}bg-blue-100 text-blue-800
+            {% elif res.badge_color == 'emerald' %}bg-emerald-100 text-emerald-800
+            {% elif res.badge_color == 'purple' %}bg-purple-100 text-purple-800
+            {% else %}bg-amber-100 text-amber-800{% endif %}">
+            {{ res.type_label }}
+          </span>
+          <span class="text-xs text-slate-400">&bull;</span>
+          <span class="text-xs text-slate-500 font-medium">
+            {{ res.date.strftime('%d/%m/%Y') if res.date else '-' }}
+          </span>
+          {% if res.team %}
+          <span class="text-xs text-slate-400">&bull;</span>
+          <span class="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">
+            {{ res.team }}
+          </span>
+          {% endif %}
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-slate-800">{{ res.user.full_name }}</span>
+          <span class="text-[11px] text-slate-400">(@{{ res.user.username }})</span>
+        </div>
+      </div>
+
+      <div class="pt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="space-y-1">
+          <a href="{{ res.url }}" class="text-sm font-bold text-slate-900 hover:text-blue-600 hover:underline">
+            {{ res.title }}
+          </a>
+          <p class="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+            {{ res.snippet }}
+          </p>
+        </div>
+
+        <div class="flex items-center gap-3 sm:flex-shrink-0">
+          {% if res.status %}
+          <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-700">
+            {{ res.status }}
+          </span>
+          {% endif %}
+          <a href="{{ res.url }}"
+             class="text-xs font-medium text-blue-600 hover:text-blue-800 whitespace-nowrap">
+            Consulter &rarr;
+          </a>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="bg-white p-12 rounded-xl shadow text-center text-slate-400 space-y-2">
+      <div class="text-3xl">🔍</div>
+      <p class="text-sm font-medium text-slate-600">Aucun résultat trouvé dans l'historique.</p>
+      <p class="text-xs text-slate-400">Modifiez vos termes de recherche ou élargissez la période de dates.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

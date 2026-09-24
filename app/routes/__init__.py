@@ -1,9 +1,9 @@
-from flask import Flask
-
 from .activities import activities_blueprint
+from .audit import audit_blueprint
 from .auth import auth_blueprint
 from .dashboard import dashboard_blueprint
 from .health import health_blueprint
+from .history import history_blueprint
 from .reports import reports_blueprint
 from .tasks import tasks_blueprint
 from .teams import teams_blueprint
@@ -19,4 +19,7 @@ def register_routes(app: Flask) -> None:
     app.register_blueprint(tasks_blueprint)
     app.register_blueprint(activities_blueprint)
     app.register_blueprint(reports_blueprint)
+    app.register_blueprint(history_blueprint)
+    app.register_blueprint(audit_blueprint)
+
 

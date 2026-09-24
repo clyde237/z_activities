@@ -5,19 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Suivi des activités{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
   {% if current_user.is_authenticated %}
   <nav class="bg-white border-b border-slate-200">
-    <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
       <a href="{{ url_for('dashboard.index') }}" class="font-semibold text-slate-900">Suivi des activités</a>
       <div class="flex items-center gap-4 text-sm">
         <a href="{{ url_for('tasks.list_tasks') }}" class="hover:underline font-medium text-slate-700">Tâches</a>
         <a href="{{ url_for('activities.list_activities') }}" class="hover:underline font-medium text-slate-700">Activités imprévues</a>
         <a href="{{ url_for('reports.list_reports') }}" class="hover:underline font-medium text-slate-700">Rapports</a>
+        <a href="{{ url_for('history.search_history') }}" class="hover:underline font-medium text-slate-700">Historique</a>
         {% if current_user.is_chef_service() %}
         <a href="{{ url_for('users.list_users') }}" class="hover:underline">Utilisateurs</a>
         <a href="{{ url_for('teams.list_teams') }}" class="hover:underline">Équipes</a>
+        <a href="{{ url_for('audit.list_audit_logs') }}" class="hover:underline">Audit</a>
         {% endif %}
         <span class="text-slate-500">{{ current_user.full_name }}</span>
         <form method="post" action="{{ url_for('auth.logout') }}">
@@ -39,7 +42,7 @@
     {% endif %}
   {% endwith %}
 
-  <main class="max-w-5xl mx-auto px-4 py-8">
+  <main class="max-w-6xl mx-auto px-4 py-8">
     {% block content %}{% endblock %}
   </main>
 </body>

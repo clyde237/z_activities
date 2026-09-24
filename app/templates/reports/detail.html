@@ -143,7 +143,7 @@
           {% for t in data.tasks %}
           <tr class="hover:bg-slate-50">
             <td class="px-3 py-2.5">
-              <a href="{{ url_for('tasks.detail_task', id=t.id) }}" class="font-medium text-slate-900 hover:text-blue-600">
+              <a href="{{ url_for('tasks.view_task', task_id=t.id) }}" class="font-medium text-slate-900 hover:text-blue-600">
                 {{ t.title }}
               </a>
               {% if t.is_late(report.period_end) and t.status.value != 'terminee' %}

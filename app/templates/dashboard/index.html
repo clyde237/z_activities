@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord{% endblock %}
+{% block title %}Tableau de bord - Supervision{% endblock %}
 {% block content %}
 <div class="space-y-6">
   <!-- Profil & Salutations -->
-  <div class="bg-white p-6 rounded-xl shadow flex items-center justify-between">
+  <div class="bg-white p-6 rounded-xl shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
     <div>
       <h1 class="text-2xl font-bold text-slate-900">Bienvenue, {{ user.full_name }}</h1>
       <p class="text-sm text-slate-500 mt-1">
@@ -11,7 +11,7 @@
         Identifiant : <span class="font-mono text-slate-700">@{{ user.username }}</span>
       </p>
     </div>
-    <div>
+    <div class="flex items-center gap-2">
       {% if user.is_chef_service() %}
         <span class="rounded-full bg-purple-100 text-purple-800 px-3 py-1 text-xs font-semibold">
           Chef de service
@@ -25,17 +25,21 @@
           Collaborateur
         </span>
       {% endif %}
+      <a href="{{ url_for('history.search_history') }}"
+         class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-md font-medium">
+        🔍 Rechercher
+      </a>
     </div>
   </div>
 
+  <!-- Alertes & Notifications prioritaires -->
   {% if pending_reports_count and pending_reports_count > 0 %}
-  <!-- Alerte de validation des rapports hebdomadaires (Chef de service - RB-023) -->
   <div class="rounded-xl bg-blue-50 border border-blue-200 p-4 text-blue-900 text-xs flex items-center justify-between">
     <div class="flex items-center gap-2">
       <span class="text-lg">📋</span>
       <span>
         <strong>Rapports hebdomadaires à valider :</strong>
-        {{ pending_reports_count }} rapport{{ "s" if pending_reports_count > 1 else "" }} soumis en attente de validation finale.
+        {{ pending_reports_count }} rapport{{ "s" if pending_reports_count > 1 else "" }} soumis en attente de votre validation finale (RB-023).
       </span>
     </div>
     <a href="{{ url_for('reports.list_reports', status='soumis') }}" class="font-semibold text-blue-900 hover:underline">
@@ -45,7 +49,6 @@
   {% endif %}
 
   {% if stats.tasks_needing_update and stats.tasks_needing_update > 0 %}
-  <!-- Alerte de suivi quotidien (CDC Section 11 & 12) -->
   <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-900 text-xs flex items-center justify-between">
     <div class="flex items-center gap-2">
       <span class="text-lg">⏰</span>
@@ -59,7 +62,6 @@
     </a>
   </div>
   {% endif %}
-
 
   <!-- Indicateurs Clés d'Activité (CDC Section 18 / 19 / 20) -->
   <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -126,7 +128,7 @@
               {{ my_weekly_report.status.value }}
             </span>
             {% if my_weekly_report.status.value == 'brouillon' %}
-              — N'oubliez pas de compléter votre synthèse et de soumettre votre rapport le vendredi.
+              — Complétez votre synthèse et soumettez votre rapport le vendredi.
             {% elif my_weekly_report.status.value == 'soumis' %}
               — Soumis le {{ my_weekly_report.submitted_at.strftime('%d/%m/%Y') }}, en attente de validation.
             {% elif my_weekly_report.status.value == 'valide' %}
@@ -156,33 +158,151 @@
     </div>
   </div>
 
-  {% if user.is_chef_service() %}
-  <!-- Organisation globale pour Chef de service -->
+  <!-- Graphiques de Supervision (Chart.js - CDC Section 18 / 19 / 30) -->
+  {% if chart_status_data and chart_teams_data and (user.is_chef_service() or supervised_teams) %}
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <a href="{{ url_for('users.list_users') }}" class="block bg-white p-6 rounded-xl shadow hover:border-slate-300 border border-transparent transition">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase font-medium text-slate-400 tracking-wider">Effectif département</p>
-          <p class="text-3xl font-bold text-slate-900 mt-2">{{ stats.users_count }}</p>
-          <p class="text-xs text-slate-500 mt-1">Utilisateur(s) enregistré(s)</p>
-        </div>
-        <div class="rounded-full bg-slate-100 p-3 text-slate-700 text-sm font-semibold">
-          &rarr;
-        </div>
+    <!-- Graphique 1 : Répartition par statut -->
+    <div class="bg-white p-5 rounded-xl shadow space-y-3">
+      <div class="border-b border-slate-100 pb-2">
+        <h3 class="font-bold text-slate-900 text-sm">Répartition des statuts des tâches</h3>
+        <p class="text-xs text-slate-400">Ventilation de l'ensemble des tâches actives et archivées</p>
       </div>
-    </a>
-    <a href="{{ url_for('teams.list_teams') }}" class="block bg-white p-6 rounded-xl shadow hover:border-slate-300 border border-transparent transition">
-      <div class="flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase font-medium text-slate-400 tracking-wider">Organisation</p>
-          <p class="text-3xl font-bold text-slate-900 mt-2">{{ stats.teams_count }}</p>
-          <p class="text-xs text-slate-500 mt-1">Équipe(s) du département</p>
-        </div>
-        <div class="rounded-full bg-slate-100 p-3 text-slate-700 text-sm font-semibold">
-          &rarr;
-        </div>
+      <div class="relative h-64">
+        <canvas id="statusChart"></canvas>
       </div>
-    </a>
+    </div>
+
+    <!-- Graphique 2 : Avancement par équipe -->
+    <div class="bg-white p-5 rounded-xl shadow space-y-3">
+      <div class="border-b border-slate-100 pb-2">
+        <h3 class="font-bold text-slate-900 text-sm">Taux d'avancement moyen par équipe (%)</h3>
+        <p class="text-xs text-slate-400">Progression moyenne consolidée de chaque domaine</p>
+      </div>
+      <div class="relative h-64">
+        <canvas id="teamsChart"></canvas>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Supervision par Équipe (CDC Section 18 & 19) -->
+  {% if teams_progress %}
+  <div class="bg-white p-6 rounded-xl shadow space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div>
+        <h2 class="text-base font-bold text-slate-900">Progression par équipe</h2>
+        <p class="text-xs text-slate-500">Vue synthétique de l'activité de chaque équipe</p>
+      </div>
+      <span class="text-xs text-slate-400">{{ teams_progress|length }} équipe(s)</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead class="bg-slate-50 text-slate-600 text-left uppercase tracking-wider">
+          <tr>
+            <th class="px-3 py-2">Équipe</th>
+            <th class="px-3 py-2 text-center">Total Tâches</th>
+            <th class="px-3 py-2 text-center">Terminées</th>
+            <th class="px-3 py-2 text-center">En cours</th>
+            <th class="px-3 py-2 text-center">En retard</th>
+            <th class="px-3 py-2">Avancement moyen</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for tp in teams_progress %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2.5 font-medium text-slate-900">{{ tp.name }}</td>
+            <td class="px-3 py-2.5 text-center text-slate-700 font-semibold">{{ tp.total_tasks }}</td>
+            <td class="px-3 py-2.5 text-center text-green-600 font-semibold">{{ tp.completed }}</td>
+            <td class="px-3 py-2.5 text-center text-blue-600 font-semibold">{{ tp.in_progress }}</td>
+            <td class="px-3 py-2.5 text-center font-semibold {{ 'text-red-600' if tp.late > 0 else 'text-slate-400' }}">
+              {{ tp.late }}
+            </td>
+            <td class="px-3 py-2.5 w-44">
+              <div class="flex items-center gap-2">
+                <div class="w-full bg-slate-200 rounded-full h-2">
+                  <div class="bg-blue-600 h-2 rounded-full" style="width: {{ tp.avg_progress }}%"></div>
+                </div>
+                <span class="font-bold text-slate-700 w-10 text-right">{{ tp.avg_progress }}%</span>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Supervision Individuelle des Membres (CDC Section 18 & 19) -->
+  {% if members_progress and (user.is_chef_service() or supervised_teams) %}
+  <div class="bg-white p-6 rounded-xl shadow space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div>
+        <h2 class="text-base font-bold text-slate-900">Supervision individuelle des collaborateurs</h2>
+        <p class="text-xs text-slate-500">Suivi individuel de l'avancement, du suivi quotidien et des rapports hebdomadaires</p>
+      </div>
+      <span class="text-xs text-slate-400">{{ members_progress|length }} membre(s)</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead class="bg-slate-50 text-slate-600 text-left uppercase tracking-wider">
+          <tr>
+            <th class="px-3 py-2">Collaborateur</th>
+            <th class="px-3 py-2">Équipe(s)</th>
+            <th class="px-3 py-2 text-center">Tâches</th>
+            <th class="px-3 py-2 text-center">En retard</th>
+            <th class="px-3 py-2">Avancement</th>
+            <th class="px-3 py-2 text-center">Mise à jour du jour</th>
+            <th class="px-3 py-2 text-center">Rapport semaine</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for mp in members_progress %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-3 py-2.5 whitespace-nowrap">
+              <span class="font-semibold text-slate-900">{{ mp.full_name }}</span>
+              <span class="text-[11px] text-slate-400 block">@{{ mp.username }}</span>
+            </td>
+            <td class="px-3 py-2.5 text-slate-600">
+              {{ mp.teams|join(', ') if mp.teams else '-' }}
+            </td>
+            <td class="px-3 py-2.5 text-center text-slate-700">
+              <span class="font-medium">{{ mp.completed }}</span> / {{ mp.total_tasks }}
+            </td>
+            <td class="px-3 py-2.5 text-center font-semibold {{ 'text-red-600' if mp.late > 0 else 'text-slate-400' }}">
+              {{ mp.late }}
+            </td>
+            <td class="px-3 py-2.5 w-36">
+              <div class="flex items-center gap-2">
+                <div class="w-full bg-slate-200 rounded-full h-1.5">
+                  <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ mp.avg_progress }}%"></div>
+                </div>
+                <span class="text-slate-700 font-semibold">{{ mp.avg_progress }}%</span>
+              </div>
+            </td>
+            <td class="px-3 py-2.5 text-center whitespace-nowrap">
+              {% if mp.has_updated_today %}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">✓ Effectuée</span>
+              {% else %}
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">⏳ En attente</span>
+              {% endif %}
+            </td>
+            <td class="px-3 py-2.5 text-center whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase
+                {% if mp.report_status == 'valide' %}bg-green-100 text-green-800
+                {% elif mp.report_status == 'soumis' %}bg-blue-100 text-blue-800
+                {% elif mp.report_status == 'brouillon' %}bg-slate-100 text-slate-700
+                {% else %}bg-rose-50 text-rose-600{% endif %}">
+                {{ mp.report_status }}
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
   {% endif %}
 
@@ -191,7 +311,7 @@
   <div class="bg-white p-6 rounded-xl shadow space-y-4">
     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
       <div>
-        <h2 class="text-lg font-semibold text-slate-900">Tâches actives prioritaires</h2>
+        <h2 class="text-base font-bold text-slate-900">Tâches actives prioritaires</h2>
         <p class="text-xs text-slate-500">Tâches nécessitant une attention ou arrivant prochainement à échéance.</p>
       </div>
       <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs text-slate-600 hover:text-slate-900 font-medium">
@@ -231,7 +351,7 @@
   <!-- Vue Chef d'équipe : Membres sous supervision (CDC Section 5.2) -->
   <div class="bg-white p-6 rounded-xl shadow space-y-4">
     <div class="border-b border-slate-100 pb-3">
-      <h2 class="text-lg font-semibold text-slate-900">Équipes sous votre supervision</h2>
+      <h2 class="text-base font-bold text-slate-900">Équipes sous votre supervision</h2>
       <p class="text-xs text-slate-500 mt-0.5">En tant que chef d'équipe, vous suivez les membres de ces équipes.</p>
     </div>
 
@@ -270,7 +390,7 @@
   <!-- Vue Membre / Collaborateur : Mes équipes (CDC Section 5.3 & 20) -->
   <div class="bg-white p-6 rounded-xl shadow space-y-4">
     <div class="border-b border-slate-100 pb-3">
-      <h2 class="text-lg font-semibold text-slate-900">Mes équipes</h2>
+      <h2 class="text-base font-bold text-slate-900">Mes équipes</h2>
       <p class="text-xs text-slate-500 mt-0.5">Équipes du département auxquelles vous êtes affecté(e).</p>
     </div>
 
@@ -301,4 +421,77 @@
     </div>
   </div>
 </div>
+
+<!-- Initialisation des Graphiques Chart.js -->
+{% if chart_status_data and chart_teams_data and (user.is_chef_service() or supervised_teams) %}
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    // 1. Doughnut Chart des Statuts
+    const ctxStatus = document.getElementById('statusChart');
+    if (ctxStatus) {
+      new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+          labels: {{ chart_status_data.labels | tojson }},
+          datasets: [{
+            data: {{ chart_status_data.counts | tojson }},
+            backgroundColor: [
+              '#94A3B8', // À faire (slate-400)
+              '#3B82F6', // En cours (blue-500)
+              '#F59E0B', // À valider (amber-500)
+              '#10B981', // Terminée (emerald-500)
+              '#EF4444', // Bloquée (red-500)
+              '#8B5CF6', // Reportée (purple-500)
+              '#6B7280', // Annulée (gray-500)
+            ],
+            borderWidth: 2,
+            borderColor: '#FFFFFF'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { boxWidth: 12, font: { size: 11 } }
+            }
+          }
+        }
+      });
+    }
+
+    // 2. Bar Chart de l'Avancement par Équipe
+    const ctxTeams = document.getElementById('teamsChart');
+    if (ctxTeams) {
+      new Chart(ctxTeams, {
+        type: 'bar',
+        data: {
+          labels: {{ chart_teams_data.labels | tojson }},
+          datasets: [{
+            label: 'Avancement moyen (%)',
+            data: {{ chart_teams_data.progress | tojson }},
+            backgroundColor: '#2563EB',
+            borderRadius: 6,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { callback: function(value) { return value + "%"; } }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+    }
+  });
+</script>
+{% endif %}
 {% endblock %}

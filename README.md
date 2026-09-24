@@ -130,7 +130,19 @@ pytest
 - Intégration sur le tableau de bord des alertes de validation et du statut du rapport de la semaine courante
 - Traçabilité intégrale dans le journal d'audit (`audit_logs`)
 
-**Reste à construire (phases 5 et 6 du CDC) :**
-- Phase 5 : Tableaux de bord de supervision avancés avec graphiques (Chart.js) et recherche d'historique.
+**Phase 5 (Supervision, Dashboards avancés, Historique transversal et Audit) terminée :**
+- Tableaux de bord de supervision adaptés par rôle pour le Chef de service et les Chefs d'équipe (CDC Sections 18 et 19)
+- Visualisations graphiques interactives intégrées avec Chart.js :
+  - Graphique circulaire (Doughnut) de répartition des tâches par statut
+  - Graphique en barres (Bar chart) d'avancement moyen par équipe
+- Supervision détaillée et consolidée par équipe : avancement global, tâches en cours, terminées, retards
+- Supervision individuelle des collaborateurs : suivi des tâches en cours, retards, taux d'avancement moyen, état du suivi quotidien du jour et statut du rapport hebdomadaire
+- Moteur de recherche et d'historique transversal multi-critères (CDC Section 21, RB-030) :
+  - Filtre textuel plein texte (titre, description, difficultés, résultats)
+  - Filtres par collaborateur, équipe supervisée, période de dates et type d'entité (tâches, mises à jour, imprévues, rapports)
+  - Périmètre de visibilité rigoureusement cloisonné selon le rôle de l'utilisateur
+- Interface de consultation et de filtrage du journal d'audit (`/audit`) réservée au Chef de service (CDC Section 22, RB-028) : filtres par auteur, action, type d'entité et dates
+
+**Reste à construire (phase 6 du CDC) :**
 - Phase 6 : Rapport mensuel départemental (consolidation, ajustement, finalisation, export).
 
