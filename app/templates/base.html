@@ -13,6 +13,7 @@
       <a href="{{ url_for('dashboard.index') }}" class="font-semibold text-slate-900">Suivi des activités</a>
       <div class="flex items-center gap-4 text-sm">
         <a href="{{ url_for('tasks.list_tasks') }}" class="hover:underline font-medium text-slate-700">Tâches</a>
+        <a href="{{ url_for('activities.list_activities') }}" class="hover:underline font-medium text-slate-700">Activités imprévues</a>
         {% if current_user.is_chef_service() %}
         <a href="{{ url_for('users.list_users') }}" class="hover:underline">Utilisateurs</a>
         <a href="{{ url_for('teams.list_teams') }}" class="hover:underline">Équipes</a>

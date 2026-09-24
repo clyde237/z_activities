@@ -108,8 +108,17 @@ pytest
 - Vue détaillée d'une tâche et intégration des indicateurs au tableau de bord (CDC 18, 19, 20)
 - Traçabilité complète des créations et modifications dans `audit_logs` (RB-028)
 
-**Reste à construire (phases 3 à 6 du CDC) :**
-- Phase 3 : Mises à jour quotidiennes, historique, difficultés, prochaine étape, activités imprévues.
+**Phase 3 (Suivi quotidien et activités imprévues) terminée :**
+- Mises à jour quotidiennes de tâches avec travail effectué, difficultés, prochaine étape (CDC Section 11, RB-008, RB-009)
+- Recalcul automatique de progression pour les tâches quantitatives lors de la mise à jour
+- Passage automatique de « À faire » à « En cours » lors de la première mise à jour (RB-014)
+- Historique chronologique conservé sans écrasement (section 11)
+- Indicateur de mise à jour du jour et bandeau d'alerte/rappel sur le tableau de bord (CDC 11 & 12)
+- Déclaration et suivi des activités imprévues par tout collaborateur (RB-005, RB-019)
+- Avis / Commentaire de supervision de l'encadrement sur les activités imprévues
+- Traçabilité complète de chaque mise à jour et activité imprévue dans `audit_logs` (RB-028)
+
+**Reste à construire (phases 4 à 6 du CDC) :**
 - Phase 4 : Rapports hebdomadaires (génération auto vendredi, édition, soumission, validation, export Word).
 - Phase 5 : Tableaux de bord de supervision avancés avec graphiques (Chart.js) et recherche d'historique.
 - Phase 6 : Rapport mensuel départemental (consolidation, ajustement, finalisation, export).

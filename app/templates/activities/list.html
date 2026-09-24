@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Activités imprévues{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Activités imprévues</h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Enregistrement des travaux non planifiés réalisés au fil de l'eau.
+      </p>
+    </div>
+    <div>
+      <a href="{{ url_for('activities.create_new_activity') }}"
+         class="inline-flex items-center rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 shadow">
+        + Déclarer une activité
+      </a>
+    </div>
+  </div>
+
+  <!-- Barre de filtres (si encadrement) -->
+  {% if selectable_users %}
+  <div class="bg-white p-4 rounded-xl shadow flex items-center justify-between">
+    <form method="get" class="flex items-center gap-3">
+      <label for="user_id" class="text-xs font-medium text-slate-600">Filtrer par collaborateur :</label>
+      <select id="user_id" name="user_id" onchange="this.form.submit()"
+              class="text-xs rounded-md border border-slate-300 px-3 py-1.5 bg-white">
+        <option value="">Tous les collaborateurs</option>
+        {% for u in selectable_users %}
+        <option value="{{ u.id }}" {% if current_user_id == u.id %}selected{% endif %}>
+          {{ u.full_name }} (@{{ u.username }})
+        </option>
+        {% endfor %}
+      </select>
+      {% if current_user_id %}
+      <a href="{{ url_for('activities.list_activities') }}" class="text-xs text-slate-500 hover:text-slate-800 underline">
+        Réinitialiser
+      </a>
+      {% endif %}
+    </form>
+    <div class="text-xs text-slate-400">
+      {{ activities|length }} activité{{ "s" if activities|length > 1 else "" }}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Table des activités imprévues -->
+  <div class="bg-white rounded-xl shadow overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-100 text-left text-xs uppercase text-slate-600 tracking-wider">
+        <tr>
+          <th class="px-4 py-3">Date & Heure</th>
+          <th class="px-4 py-3">Activité</th>
+          <th class="px-4 py-3">Collaborateur</th>
+          <th class="px-4 py-3">Demandeur</th>
+          <th class="px-4 py-3">Priorité</th>
+          <th class="px-4 py-3">Supervision</th>
+          <th class="px-4 py-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for a in activities %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3 text-xs whitespace-nowrap">
+            <span class="font-medium text-slate-900">{{ a.activity_date.strftime('%d/%m/%Y') }}</span>
+            {% if a.start_time and a.end_time %}
+            <p class="text-[11px] text-slate-400">
+              {{ a.start_time.strftime('%H:%M') }} - {{ a.end_time.strftime('%H:%M') }}
+            </p>
+            {% elif a.start_time %}
+            <p class="text-[11px] text-slate-400">à {{ a.start_time.strftime('%H:%M') }}</p>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            <a href="{{ url_for('activities.view_activity', activity_id=a.id) }}" class="font-medium text-slate-900 hover:underline">
+              {{ a.title }}
+            </a>
+            {% if a.description %}
+            <p class="text-xs text-slate-500 line-clamp-1 mt-0.5">{{ a.description }}</p>
+            {% endif %}
+            {% if a.result %}
+            <p class="text-[11px] text-emerald-700 mt-1">
+              <strong>Résultat :</strong> {{ a.result }}
+            </p>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-xs">
+            <span class="font-medium text-slate-800">{{ a.user.full_name }}</span>
+            {% if a.user.function %}
+            <p class="text-[11px] text-slate-400">{{ a.user.function }}</p>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-600">
+            {{ a.requester or "—" }}
+          </td>
+          <td class="px-4 py-3 text-xs">
+            {% if a.priority.value == 'urgente' %}
+              <span class="rounded bg-red-100 text-red-800 px-2 py-0.5 text-xs font-bold">Urgente</span>
+            {% elif a.priority.value == 'haute' %}
+              <span class="rounded bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-semibold">Haute</span>
+            {% elif a.priority.value == 'basse' %}
+              <span class="rounded bg-slate-100 text-slate-600 px-2 py-0.5 text-xs">Basse</span>
+            {% else %}
+              <span class="rounded bg-slate-100 text-slate-700 px-2 py-0.5 text-xs">Normale</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-xs">
+            {% if a.responsible_comment %}
+              <span class="inline-flex items-center gap-1 text-blue-700 text-xs font-medium">
+                <span>💬</span> Commenté
+              </span>
+            {% else %}
+              <span class="text-slate-400 text-xs italic">Sans remarque</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-right text-xs whitespace-nowrap space-x-2">
+            <a href="{{ url_for('activities.view_activity', activity_id=a.id) }}" class="text-slate-600 hover:text-slate-900 font-medium">
+              Voir
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="px-4 py-12 text-center text-slate-400 text-sm">
+            Aucune activité imprévue enregistrée.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

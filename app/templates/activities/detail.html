@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Activité : {{ activity.title }}{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+  <!-- En-tête -->
+  <div class="flex items-center justify-between">
+    <div>
+      <a href="{{ url_for('activities.list_activities') }}" class="text-xs text-slate-500 hover:text-slate-800">
+        &larr; Liste des activités imprévues
+      </a>
+      <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ activity.title }}</h1>
+    </div>
+    {% if can_edit %}
+    <div class="flex items-center gap-2">
+      <a href="{{ url_for('activities.edit_activity_route', activity_id=activity.id) }}"
+         class="rounded-md border border-slate-300 bg-white text-slate-700 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 shadow-sm">
+        Modifier
+      </a>
+      <form method="post" action="{{ url_for('activities.delete_activity_route', activity_id=activity.id) }}"
+            onsubmit="return confirm('Confirmez-vous la suppression de cette activité imprévue ?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="rounded-md bg-rose-50 border border-rose-200 text-rose-700 px-3 py-1.5 text-xs font-medium hover:bg-rose-100">
+          Supprimer
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Fiche détail -->
+  <div class="bg-white rounded-xl shadow divide-y divide-slate-100">
+    <!-- Métadonnées principales -->
+    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+      <div>
+        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Date</span>
+        <p class="font-semibold text-slate-900 mt-0.5">{{ activity.activity_date.strftime('%d/%m/%Y') }}</p>
+      </div>
+
+      <div>
+        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Horaires</span>
+        <p class="font-medium text-slate-900 mt-0.5">
+          {% if activity.start_time and activity.end_time %}
+            {{ activity.start_time.strftime('%H:%M') }} &rarr; {{ activity.end_time.strftime('%H:%M') }}
+          {% elif activity.start_time %}
+            À partir de {{ activity.start_time.strftime('%H:%M') }}
+          {% else %}
+            Non précisés
+          {% endif %}
+        </p>
+      </div>
+
+      <div>
+        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Priorité</span>
+        <div class="mt-0.5">
+          {% if activity.priority.value == 'urgente' %}
+            <span class="rounded bg-red-100 text-red-800 px-2 py-0.5 font-bold">Urgente</span>
+          {% elif activity.priority.value == 'haute' %}
+            <span class="rounded bg-amber-100 text-amber-800 px-2 py-0.5 font-semibold">Haute</span>
+          {% elif activity.priority.value == 'basse' %}
+            <span class="rounded bg-slate-100 text-slate-600 px-2 py-0.5">Basse</span>
+          {% else %}
+            <span class="rounded bg-slate-100 text-slate-700 px-2 py-0.5">Normale</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div>
+        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Demandeur</span>
+        <p class="font-medium text-slate-900 mt-0.5">{{ activity.requester or "—" }}</p>
+      </div>
+    </div>
+
+    <!-- Collaborateur ayant réalisé l'activité -->
+    <div class="p-6 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+        {{ activity.user.first_name[0] }}{{ activity.user.last_name[0] }}
+      </div>
+      <div>
+        <p class="font-medium text-slate-900 text-sm">Réalisé par : {{ activity.user.full_name }}</p>
+        <p class="text-xs text-slate-500">
+          {% if activity.user.function %}{{ activity.user.function }} &bull; {% endif %}
+          Enregistré le {{ activity.created_at.strftime('%d/%m/%Y à %H:%M') }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Description -->
+    {% if activity.description %}
+    <div class="p-6 space-y-1">
+      <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Description</h2>
+      <p class="text-sm text-slate-700 whitespace-pre-line">{{ activity.description }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Résultat -->
+    {% if activity.result %}
+    <div class="p-6 space-y-1 bg-emerald-50/50">
+      <h2 class="text-xs uppercase font-semibold text-emerald-800 tracking-wider">Résultat obtenu</h2>
+      <p class="text-sm text-emerald-900 whitespace-pre-line">{{ activity.result }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Commentaire responsable -->
+    <div class="p-6 space-y-1">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Avis / Commentaire du responsable</h2>
+        {% if is_manager and not activity.responsible_comment %}
+        <a href="{{ url_for('activities.edit_activity_route', activity_id=activity.id) }}"
+           class="text-xs text-blue-600 hover:underline">
+          + Ajouter un commentaire
+        </a>
+        {% endif %}
+      </div>
+      {% if activity.responsible_comment %}
+      <p class="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
+        {{ activity.responsible_comment }}
+      </p>
+      {% else %}
+      <p class="text-xs text-slate-400 italic">Aucun commentaire de l'encadrement pour le moment.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

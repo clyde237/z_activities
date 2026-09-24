@@ -4,7 +4,7 @@ from flask import Blueprint, render_template
 from flask_login import current_user, login_required
 
 from ..extensions import db
-from ..models import Task, TaskStatus, Team, User
+from ..models import Task, TaskStatus, Team, UnexpectedActivity, User
 
 dashboard_blueprint = Blueprint("dashboard", __name__)
 
@@ -18,6 +18,11 @@ def index():
 
     if current_user.is_chef_service():
         all_tasks = db.session.query(Task).all()
+        activities_count = db.session.query(UnexpectedActivity).count()
+        tasks_needing_update = sum(
+            1 for t in all_tasks
+            if t.status == TaskStatus.EN_COURS and not any(u.created_at.date() == today for u in t.updates)
+        )
         stats = {
             "users_count": db.session.query(User).count(),
             "teams_count": db.session.query(Team).count(),
@@ -25,6 +30,8 @@ def index():
             "tasks_in_progress": sum(1 for t in all_tasks if t.status == TaskStatus.EN_COURS),
             "tasks_completed": sum(1 for t in all_tasks if t.status == TaskStatus.TERMINEE),
             "tasks_late": sum(1 for t in all_tasks if t.is_late(today)),
+            "activities_count": activities_count,
+            "tasks_needing_update": tasks_needing_update,
         }
         recent_tasks = (
             db.session.query(Task)
@@ -43,11 +50,22 @@ def index():
             .filter((Task.responsible_id == current_user.id) | (Task.co_responsible_id == current_user.id))
             .all()
         )
+        activities_count = (
+            db.session.query(UnexpectedActivity)
+            .filter_by(user_id=current_user.id)
+            .count()
+        )
+        tasks_needing_update = sum(
+            1 for t in my_tasks
+            if t.status == TaskStatus.EN_COURS and not any(u.created_at.date() == today for u in t.updates)
+        )
         stats = {
             "tasks_total": len(my_tasks),
             "tasks_in_progress": sum(1 for t in my_tasks if t.status == TaskStatus.EN_COURS),
             "tasks_completed": sum(1 for t in my_tasks if t.status == TaskStatus.TERMINEE),
             "tasks_late": sum(1 for t in my_tasks if t.is_late(today)),
+            "activities_count": activities_count,
+            "tasks_needing_update": tasks_needing_update,
         }
         recent_tasks = [
             t for t in my_tasks if t.status not in (TaskStatus.TERMINEE, TaskStatus.ANNULEE)

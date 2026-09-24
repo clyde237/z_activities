@@ -170,15 +170,135 @@
     {% endif %}
   </div>
 
-  <!-- Bloc mises à jour (Phase 3) -->
-  <div class="bg-white rounded-xl shadow p-6 space-y-3">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <h2 class="font-semibold text-slate-900">Mises à jour quotidiennes</h2>
-      <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">Phase 3</span>
+  <!-- Section Mises à jour quotidiennes (CDC Section 11, RB-008, RB-014) -->
+  <div class="bg-white rounded-xl shadow p-6 space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">Mises à jour quotidiennes ({{ task.updates|length }})</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Historique du travail réalisé, des difficultés et de la progression.</p>
+      </div>
+      <div>
+        {% if updated_today %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> À jour aujourd'hui
+        </span>
+        {% else %}
+        <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs font-medium">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> En attente de mise à jour
+        </span>
+        {% endif %}
+      </div>
     </div>
-    <p class="text-xs text-slate-500">
-      Le suivi quotidien, la documentation du travail réalisé et les difficultés seront enregistrés ici dès la Phase 3.
-    </p>
+
+    <!-- Formulaire d'ajout de mise à jour -->
+    {% if can_update and task.status.value not in ['terminee', 'annulee'] %}
+    <form method="post" action="{{ url_for('tasks.add_update_to_task', task_id=task.id) }}"
+          class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <h3 class="font-medium text-slate-900 text-sm">Nouvelle mise à jour d'avancement</h3>
+
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-1" for="work_done">Travail effectué aujourd'hui *</label>
+        <textarea id="work_done" name="work_done" rows="2" required
+                  placeholder="Décrivez précisément le travail accompli..."
+                  class="w-full rounded-md border border-slate-300 p-2.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"></textarea>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {% if task.task_type.value == 'quantitative' %}
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1" for="realized">
+            Nouveau cumul réalisé (objectif : {{ task.objective|round(0)|int }})
+          </label>
+          <input id="realized" name="realized" type="number" step="any" min="0"
+                 value="{{ task.realized }}" required
+                 class="w-full rounded-md border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+        </div>
+        {% else %}
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1" for="progress">
+            Nouvelle progression (%)
+          </label>
+          <input id="progress" name="progress" type="number" step="any" min="0" max="100"
+                 value="{{ task.progress }}" required
+                 class="w-full rounded-md border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+        </div>
+        {% endif %}
+
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1" for="status">Changer le statut (optionnel)</label>
+          <select id="status" name="status" class="w-full rounded-md border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+            <option value="">Conserver ({{ task.status.value|replace('_', ' ')|capitalize }})</option>
+            {% for st in statuses %}
+              {% if st != task.status and task.can_transition_to(st) %}
+              <option value="{{ st.value }}">{{ st.value|replace('_', ' ')|capitalize }}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1" for="difficulties">Difficultés rencontrées</label>
+          <textarea id="difficulties" name="difficulties" rows="2"
+                    placeholder="Blocages, pièces manquantes, retards..."
+                    class="w-full rounded-md border border-slate-300 p-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1" for="next_step">Prochaine étape</label>
+          <textarea id="next_step" name="next_step" rows="2"
+                    placeholder="Actions prévues pour la suite..."
+                    class="w-full rounded-md border border-slate-300 p-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"></textarea>
+        </div>
+      </div>
+
+      <div class="text-right">
+        <button type="submit" class="rounded-md bg-slate-900 text-white px-4 py-2 text-xs font-medium hover:bg-slate-800 shadow">
+          Enregistrer la mise à jour
+        </button>
+      </div>
+    </form>
+    {% endif %}
+
+    <!-- Historique des mises à jour -->
+    <div class="space-y-4">
+      <h3 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Historique chronologique</h3>
+      {% if task.updates %}
+      <div class="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+        {% for u in task.updates|reverse %}
+        <div class="relative space-y-1.5 bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <div class="absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full border-2 border-white bg-blue-600"></div>
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold text-slate-900">{{ u.user.full_name }}</span>
+            <span class="text-slate-400">{{ u.created_at.strftime('%d/%m/%Y à %H:%M') }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="rounded bg-blue-100 text-blue-800 px-2 py-0.5 text-[11px] font-bold">
+              Progression : {{ u.progress|round(1) }} %
+            </span>
+          </div>
+          <div class="pt-1 text-xs text-slate-800 whitespace-pre-line">
+            {{ u.work_done }}
+          </div>
+          {% if u.difficulties %}
+          <div class="text-xs text-rose-700 bg-rose-50 p-2 rounded border border-rose-100 mt-2">
+            <strong>Difficulté :</strong> {{ u.difficulties }}
+          </div>
+          {% endif %}
+          {% if u.next_step %}
+          <div class="text-xs text-slate-600 bg-slate-100 p-2 rounded mt-1">
+            <strong>Prochaine étape :</strong> {{ u.next_step }}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-slate-400 italic">Aucune mise à jour enregistrée pour le moment.</p>
+      {% endif %}
+    </div>
   </div>
 </div>
 {% endblock %}

@@ -5,12 +5,14 @@ from flask_login import current_user, login_required
 
 from ..extensions import db
 from ..models import Task, TaskPriority, TaskStatus, TaskType, Team
-from ..permissions import can_create_task, can_edit_task, can_view_task
+from ..permissions import can_create_task, can_edit_task, can_update_task_progress, can_view_task
 from ..services.task_service import (
     TaskValidationError,
+    add_task_update,
     create_task,
     get_assignable_members,
     get_visible_tasks,
+    has_updated_today,
     update_task,
 )
 
@@ -187,11 +189,16 @@ def view_task(task_id: int):
         abort(403)
 
     can_edit = can_edit_task(current_user, task)
+    can_update = can_update_task_progress(current_user, task)
+    updated_today = has_updated_today(task)
 
     return render_template(
         "tasks/detail.html",
         task=task,
         can_edit=can_edit,
+        can_update=can_update,
+        updated_today=updated_today,
+        statuses=TaskStatus,
     )
 
 
@@ -276,3 +283,33 @@ def edit_task_route(task_id: int):
         statuses=TaskStatus,
         form=None,
     )
+
+
+@tasks_blueprint.post("/<int:task_id>/updates")
+@login_required
+def add_update_to_task(task_id: int):
+    task = db.session.get(Task, task_id)
+    if task is None:
+        abort(404)
+
+    if not can_update_task_progress(current_user, task):
+        abort(403)
+
+    data = {
+        "work_done": request.form.get("work_done", ""),
+        "difficulties": request.form.get("difficulties", ""),
+        "next_step": request.form.get("next_step", ""),
+        "progress": request.form.get("progress"),
+        "realized": request.form.get("realized"),
+        "status": request.form.get("status"),
+    }
+
+    try:
+        add_task_update(task, current_user, data)
+        flash("Mise à jour quotidienne enregistrée avec succès.", "success")
+    except TaskValidationError as e:
+        for err in e.errors:
+            flash(err, "error")
+
+    return redirect(url_for("tasks.view_task", task_id=task.id))
+

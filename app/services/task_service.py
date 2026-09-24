@@ -2,8 +2,8 @@ from datetime import date
 from typing import Any
 
 from ..extensions import db
-from ..models import Task, TaskPriority, TaskStatus, TaskType, Team, User, UserRole, UserTeam
-from ..permissions import can_create_task, can_edit_task
+from ..models import Task, TaskPriority, TaskStatus, TaskType, TaskUpdate, Team, User, UserRole, UserTeam
+from ..permissions import can_create_task, can_edit_task, can_update_task_progress
 from .audit_service import log_action
 
 
@@ -226,3 +226,91 @@ def get_visible_tasks(
         )
 
     return query.order_by(Task.due_date.asc(), Task.priority.desc()).all()
+
+
+def has_updated_today(task: Task, as_of: date | None = None) -> bool:
+    """Vérifie si la tâche a reçu au moins une mise à jour aujourd'hui (CDC 11)."""
+    check_date = as_of or date.today()
+    return any(u.created_at.date() == check_date for u in task.updates)
+
+
+def add_task_update(
+    task: Task,
+    user: User,
+    data: dict[str, Any],
+) -> TaskUpdate:
+    """Enregistre une mise à jour quotidienne (CDC 11, RB-008, RB-009, RB-014)."""
+    if not can_update_task_progress(user, task):
+        raise TaskValidationError(["Vous n'avez pas l'autorisation de mettre à jour l'avancement de cette tâche."])
+
+    if task.status in (TaskStatus.TERMINEE, TaskStatus.ANNULEE):
+        raise TaskValidationError([f"Impossible de mettre à jour une tâche à l'état '{task.status.value}'."])
+
+    work_done = data.get("work_done", "").strip()
+    if not work_done:
+        raise TaskValidationError(["La description du travail effectué est obligatoire."])
+
+    difficulties = data.get("difficulties", "").strip() or None
+    next_step = data.get("next_step", "").strip() or None
+
+    old_progress = task.progress
+    old_status = task.status
+
+    if task.task_type == TaskType.QUANTITATIVE:
+        realized_val = data.get("realized")
+        if realized_val is not None and realized_val != "":
+            try:
+                realized_num = float(realized_val)
+                if realized_num < 0:
+                    raise TaskValidationError(["La quantité réalisée ne peut pas être négative."])
+                task.realized = realized_num
+                task.recompute_progress()
+            except ValueError:
+                raise TaskValidationError(["La quantité réalisée doit être un nombre valide."])
+    else:
+        progress_val = data.get("progress")
+        if progress_val is not None and progress_val != "":
+            try:
+                progress_num = float(progress_val)
+                if progress_num < 0 or progress_num > 100:
+                    raise TaskValidationError(["La progression doit être comprise entre 0 et 100 %."])
+                task.progress = progress_num
+            except ValueError:
+                raise TaskValidationError(["La progression doit être une valeur numérique."])
+
+    # RB-014: passage automatique de 'À faire' à 'En cours' à la première mise à jour
+    task.apply_first_update_transition()
+
+    # Si l'utilisateur demande explicitement un passage de statut (ex: à valider ou terminée)
+    target_status = data.get("status")
+    if target_status and target_status != task.status.value:
+        try:
+            new_st = TaskStatus(target_status)
+            if task.can_transition_to(new_st):
+                task.status = new_st
+            else:
+                raise TaskValidationError([f"Transition de statut vers '{new_st.value}' non autorisée."])
+        except ValueError:
+            raise TaskValidationError(["Statut invalide."])
+
+    update = TaskUpdate(
+        task_id=task.id,
+        user_id=user.id,
+        progress=task.progress,
+        work_done=work_done,
+        difficulties=difficulties,
+        next_step=next_step,
+    )
+    db.session.add(update)
+    db.session.flush()
+
+    log_action(
+        "update_progress",
+        "Task",
+        task.id,
+        old_value=f"prog={old_progress} status={old_status.value}",
+        new_value=f"prog={task.progress} status={task.status.value}",
+    )
+    db.session.commit()
+    return update
+
