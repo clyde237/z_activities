@@ -4,7 +4,7 @@
     {
       "name": "z_activiteis",
       "runtimeExecutable": ".venv/bin/flask",
-      "runtimeArgs": ["--app", "run.py", "run", "--port", "5050"],
+      "runtimeArgs": ["--app", "run.py", "--debug", "run", "--port", "5050"],
       "port": 5050
     }
   ]

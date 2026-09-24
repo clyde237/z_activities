@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}{{ "Modifier l'utilisateur" if user else "Nouvel utilisateur" }}{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+  <h1 class="text-xl font-semibold">
+    {{ "Modifier " ~ user.full_name if user else "Nouvel utilisateur" }}
+  </h1>
+
+  <form method="post" class="bg-white p-6 rounded-xl shadow space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {% if not user %}
+    <div>
+      <label class="block text-sm font-medium mb-1" for="username">Identifiant</label>
+      <input id="username" name="username" type="text" required
+             value="{{ form.username if form else '' }}"
+             class="w-full rounded-md border border-slate-300 px-3 py-2">
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1" for="first_name">Prénom</label>
+        <input id="first_name" name="first_name" type="text" required
+               value="{{ form.first_name if form else (user.first_name if user else '') }}"
+               class="w-full rounded-md border border-slate-300 px-3 py-2">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="last_name">Nom</label>
+        <input id="last_name" name="last_name" type="text" required
+               value="{{ form.last_name if form else (user.last_name if user else '') }}"
+               class="w-full rounded-md border border-slate-300 px-3 py-2">
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1" for="function">Fonction</label>
+      <input id="function" name="function" type="text"
+             value="{{ form.function if form else (user.function if user and user.function else '') }}"
+             class="w-full rounded-md border border-slate-300 px-3 py-2">
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1" for="role">Rôle</label>
+      <select id="role" name="role" class="w-full rounded-md border border-slate-300 px-3 py-2">
+        {% for role in roles %}
+        <option value="{{ role.value }}"
+          {% if (form and form.role == role.value) or (user and user.role == role) or (not form and not user and role == roles.COLLABORATEUR) %}selected{% endif %}>
+          {{ "Chef de service" if role.value == "chef_service" else "Collaborateur" }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if teams %}
+    <div class="grid grid-cols-2 gap-4 items-end">
+      <div>
+        <label class="block text-sm font-medium mb-1" for="team_id">Équipe</label>
+        <select id="team_id" name="team_id" class="w-full rounded-md border border-slate-300 px-3 py-2">
+          <option value="">Aucune équipe</option>
+          {% for team in teams %}
+          <option value="{{ team.id }}"
+            {% if form and form.get('team_id')|string == team.id|string %}selected{% endif %}>
+            {{ team.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex items-center gap-2 pb-2">
+        <input id="is_team_lead" name="is_team_lead" type="checkbox"
+               {% if form and form.get('is_team_lead') == 'on' %}checked{% endif %}>
+        <label for="is_team_lead" class="text-sm">Chef d'équipe</label>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if user %}
+    <div class="flex items-center gap-2">
+      <input id="is_active_account" name="is_active_account" type="checkbox"
+             {% if user.is_active_account %}checked{% endif %}>
+      <label for="is_active_account" class="text-sm">Compte actif</label>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1" for="password">
+          {{ "Nouveau mot de passe" if user else "Mot de passe" }}
+        </label>
+        <input id="password" name="password" type="password" {% if not user %}required{% endif %}
+               class="w-full rounded-md border border-slate-300 px-3 py-2">
+        {% if user %}
+        <p class="text-xs text-slate-500 mt-1">Laisser vide pour ne pas changer.</p>
+        {% endif %}
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1" for="password_confirm">Confirmation</label>
+        <input id="password_confirm" name="password_confirm" type="password" {% if not user %}required{% endif %}
+               class="w-full rounded-md border border-slate-300 px-3 py-2">
+      </div>
+    </div>
+
+    <button type="submit" class="rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium">
+      Enregistrer
+    </button>
+  </form>
+
+  {% if user %}
+  <div class="bg-white p-6 rounded-xl shadow space-y-4">
+    <h2 class="font-semibold">Équipes</h2>
+
+    <ul class="space-y-2">
+      {% for link in user.team_links %}
+      <li class="flex items-center justify-between text-sm border-b border-slate-100 pb-2">
+        <span>{{ link.team.name }}{% if link.is_team_lead %} — <strong>chef d'équipe</strong>{% endif %}</span>
+        <span class="flex gap-3">
+          <form method="post" action="{{ url_for('users.toggle_team_lead', user_id=user.id, team_id=link.team_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="text-slate-600 hover:underline">
+              {{ "Retirer chef d'équipe" if link.is_team_lead else "Nommer chef d'équipe" }}
+            </button>
+          </form>
+          <form method="post" action="{{ url_for('users.remove_team', user_id=user.id, team_id=link.team_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="text-red-600 hover:underline">Retirer</button>
+          </form>
+        </span>
+      </li>
+      {% else %}
+      <li class="text-sm text-slate-500">Aucune équipe.</li>
+      {% endfor %}
+    </ul>
+
+    {% if teams %}
+    <form method="post" action="{{ url_for('users.assign_team', user_id=user.id) }}" class="flex items-end gap-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="flex-1">
+        <label class="block text-sm font-medium mb-1" for="team_id">Affecter à une équipe</label>
+        <select id="team_id" name="team_id" class="w-full rounded-md border border-slate-300 px-3 py-2">
+          {% for team in teams %}
+          <option value="{{ team.id }}">{{ team.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="flex items-center gap-2 pb-2">
+        <input id="is_team_lead" name="is_team_lead" type="checkbox">
+        <label for="is_team_lead" class="text-sm">Chef d'équipe</label>
+      </div>
+      <button type="submit" class="rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium">
+        Affecter
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

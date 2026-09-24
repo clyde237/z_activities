@@ -82,7 +82,18 @@ pytest
 
 ## État d'avancement
 
-Fondation posée : modèles du domaine (section 31 du CDC), authentification
-par rôle, journal d'audit, structure de permissions. Les écrans de gestion
-des tâches, équipes, rapports et tableaux de bord restent à construire
-(phases 2 à 6 du CDC).
+**Phase 1 (connexion, rôles, utilisateurs, équipes, affectations) terminée :**
+- Connexion / déconnexion (Flask-Login), CSRF sur tous les formulaires
+- Gestion des utilisateurs (création, modification, rôle, statut actif/inactif)
+- Gestion des équipes (création, modification)
+- Affectation d'un utilisateur à plusieurs équipes, désignation par équipe
+  d'un chef d'équipe (`UserTeam.is_team_lead`)
+- Contrôle d'accès serveur (403 pour un collaborateur hors périmètre chef
+  de service), pas seulement des liens masqués côté interface
+- Journal d'audit sur les créations/modifications sensibles
+
+`flask seed-teams` crée les 5 équipes par défaut du département.
+
+**Reste à construire (phases 2 à 6 du CDC) :** tâches et mises à jour
+quotidiennes, activités imprévues, génération des rapports (hebdomadaire
+auto le vendredi + export Word), tableaux de bord par rôle avec Chart.js.

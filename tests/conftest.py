@@ -12,6 +12,7 @@ def app(tmp_path: Path):
         TESTING = True
         SECRET_KEY = "test-secret"
         DATABASE_PATH = str(tmp_path / "test.sqlite3")
+        WTF_CSRF_ENABLED = False
 
     flask_app = create_app(TestConfig)
 

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ "Modifier l'équipe" if team else "Nouvelle équipe" }}{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto">
+  <h1 class="text-xl font-semibold mb-4">
+    {{ "Modifier " ~ team.name if team else "Nouvelle équipe" }}
+  </h1>
+  <form method="post" class="bg-white p-6 rounded-xl shadow space-y-4">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div>
+      <label class="block text-sm font-medium mb-1" for="name">Nom</label>
+      <input id="name" name="name" type="text" required
+             value="{{ form.name if form else (team.name if team else '') }}"
+             class="w-full rounded-md border border-slate-300 px-3 py-2">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1" for="description">Description</label>
+      <textarea id="description" name="description" rows="3"
+                class="w-full rounded-md border border-slate-300 px-3 py-2">{{ form.description if form else (team.description if team and team.description else '') }}</textarea>
+    </div>
+    <button type="submit" class="rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium">
+      Enregistrer
+    </button>
+  </form>
+</div>
+{% endblock %}

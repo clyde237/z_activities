@@ -4,7 +4,7 @@ from flask import Flask
 
 from .cli import register_cli
 from .config import Config
-from .extensions import db, login_manager, migrate
+from .extensions import csrf, db, login_manager, migrate
 from .routes import register_routes
 
 
@@ -25,6 +25,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
+    csrf.init_app(app)
 
     from . import models  # noqa: F401  (enregistre les modèles auprès de SQLAlchemy)
 

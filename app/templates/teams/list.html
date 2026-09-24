@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Équipes{% endblock %}
+{% block content %}
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-xl font-semibold">Équipes</h1>
+    <a href="{{ url_for('teams.create_team') }}" class="rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium">
+      Nouvelle équipe
+    </a>
+  </div>
+  <div class="bg-white rounded-xl shadow overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-100 text-left">
+        <tr>
+          <th class="px-4 py-2">Nom</th>
+          <th class="px-4 py-2">Membres</th>
+          <th class="px-4 py-2"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for team in teams %}
+        <tr>
+          <td class="px-4 py-2">{{ team.name }}</td>
+          <td class="px-4 py-2">{{ team.member_links|length }}</td>
+          <td class="px-4 py-2 text-right">
+            <a href="{{ url_for('teams.edit_team', team_id=team.id) }}" class="text-slate-600 hover:underline">
+              Modifier
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="3" class="px-4 py-6 text-center text-slate-500">Aucune équipe.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
