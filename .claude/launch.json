@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "z_activiteis",
+      "runtimeExecutable": ".venv/bin/flask",
+      "runtimeArgs": ["--app", "run.py", "run", "--port", "5050"],
+      "port": 5050
+    }
+  ]
+}
