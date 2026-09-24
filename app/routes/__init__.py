@@ -3,6 +3,7 @@ from flask import Flask
 from .auth import auth_blueprint
 from .dashboard import dashboard_blueprint
 from .health import health_blueprint
+from .tasks import tasks_blueprint
 from .teams import teams_blueprint
 from .users import users_blueprint
 
@@ -13,3 +14,4 @@ def register_routes(app: Flask) -> None:
     app.register_blueprint(dashboard_blueprint)
     app.register_blueprint(users_blueprint)
     app.register_blueprint(teams_blueprint)
+    app.register_blueprint(tasks_blueprint)

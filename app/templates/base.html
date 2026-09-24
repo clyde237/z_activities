@@ -10,8 +10,9 @@
   {% if current_user.is_authenticated %}
   <nav class="bg-white border-b border-slate-200">
     <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="{{ url_for('dashboard.index') }}" class="font-semibold">Suivi des activités</a>
+      <a href="{{ url_for('dashboard.index') }}" class="font-semibold text-slate-900">Suivi des activités</a>
       <div class="flex items-center gap-4 text-sm">
+        <a href="{{ url_for('tasks.list_tasks') }}" class="hover:underline font-medium text-slate-700">Tâches</a>
         {% if current_user.is_chef_service() %}
         <a href="{{ url_for('users.list_users') }}" class="hover:underline">Utilisateurs</a>
         <a href="{{ url_for('teams.list_teams') }}" class="hover:underline">Équipes</a>

@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% block title %}{{ "Modifier la tâche" if task else "Nouvelle tâche" }}{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-slate-900">
+      {{ "Modifier : " ~ task.title if task else "Nouvelle tâche" }}
+    </h1>
+    <a href="{{ url_for('tasks.list_tasks') }}" class="text-sm text-slate-500 hover:text-slate-900">
+      &larr; Retour aux tâches
+    </a>
+  </div>
+
+  <form method="post" class="bg-white p-6 rounded-xl shadow space-y-5">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Titre -->
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="title">Titre de la tâche *</label>
+      <input id="title" name="title" type="text" required
+             value="{{ form.title if form else (task.title if task else '') }}"
+             placeholder="Ex: Rapprochement bancaire du compte principal"
+             class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+    </div>
+
+    <!-- Description -->
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="description">Description</label>
+      <textarea id="description" name="description" rows="3"
+                placeholder="Détails, consignes ou périmètre de l'activité..."
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">{{ form.description if form else (task.description if task and task.description else '') }}</textarea>
+    </div>
+
+    <!-- Équipe & Responsables -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="team_id">Équipe *</label>
+        <select id="team_id" name="team_id" required
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+          {% for t in teams %}
+          <option value="{{ t.id }}"
+            {% if (form and form.team_id|string == t.id|string) or (task and task.team_id == t.id) %}selected{% endif %}>
+            {{ t.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="responsible_id">Responsable principal *</label>
+        <select id="responsible_id" name="responsible_id" required
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+          <option value="">Sélectionner un membre</option>
+          {% for m in assignable_members %}
+          <option value="{{ m.id }}"
+            {% if (form and form.responsible_id|string == m.id|string) or (task and task.responsible_id == m.id) %}selected{% endif %}>
+            {{ m.full_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="co_responsible_id">Co-responsable (optionnel)</label>
+        <select id="co_responsible_id" name="co_responsible_id"
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+          <option value="">Aucun co-responsable</option>
+          {% for m in assignable_members %}
+          <option value="{{ m.id }}"
+            {% if (form and form.co_responsible_id|string == m.id|string) or (task and task.co_responsible_id == m.id) %}selected{% endif %}>
+            {{ m.full_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Dates début et échéance -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="start_date">Date de début *</label>
+        <input id="start_date" name="start_date" type="date" required
+               value="{{ form.start_date if form else (task.start_date.strftime('%Y-%m-%d') if task and task.start_date else '') }}"
+               class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="due_date">Date d'échéance *</label>
+        <input id="due_date" name="due_date" type="date" required
+               value="{{ form.due_date if form else (task.due_date.strftime('%Y-%m-%d') if task and task.due_date else '') }}"
+               class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+      </div>
+    </div>
+
+    <!-- Priorité & Type -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="priority">Priorité *</label>
+        <select id="priority" name="priority"
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+          {% for p in priorities %}
+          <option value="{{ p.value }}"
+            {% if (form and form.priority == p.value) or (task and task.priority == p) or (not form and not task and p.value == 'normale') %}selected{% endif %}>
+            {{ p.value|capitalize }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="task_type">Type de tâche *</label>
+        <select id="task_type" name="task_type" onchange="toggleTaskTypeFields()"
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+          {% for t in task_types %}
+          <option value="{{ t.value }}"
+            {% if (form and form.task_type == t.value) or (task and task.task_type == t) or (not form and not task and t.value == 'qualitative') %}selected{% endif %}>
+            {{ "Quantitative (objectif mesurable)" if t.value == 'quantitative' else "Qualitative (progression manuelle)" }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Champs conditionnels selon Type -->
+    <div id="quantitative_fields" class="p-4 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="objective">Objectif quantitatif *</label>
+        <input id="objective" name="objective" type="number" step="any" min="0.1"
+               value="{{ form.objective if form else (task.objective if task and task.objective else '') }}"
+               placeholder="Ex: 200 (factures, lignes...)"
+               class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+        <p class="text-[11px] text-slate-400 mt-1">Nombre d'unités à réaliser.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="realized">Quantité déjà réalisée</label>
+        <input id="realized" name="realized" type="number" step="any" min="0"
+               value="{{ form.realized if form else (task.realized if task else '0') }}"
+               class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+        <p class="text-[11px] text-slate-400 mt-1">La progression sera calculée automatiquement.</p>
+      </div>
+    </div>
+
+    <div id="qualitative_fields" class="p-4 rounded-lg bg-slate-50 border border-slate-200">
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="progress">Progression initiale (%)</label>
+      <input id="progress" name="progress" type="number" step="any" min="0" max="100"
+             value="{{ form.progress if form else (task.progress if task else '0') }}"
+             class="w-full md:w-1/2 rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+      <p class="text-[11px] text-slate-400 mt-1">De 0 à 100 % (mise à jour manuelle).</p>
+    </div>
+
+    <!-- Statut (en édition uniquement ou pré-sélectionné) -->
+    {% if task %}
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="status">Statut de la tâche</label>
+      <select id="status" name="status"
+              class="w-full md:w-1/2 rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+        <option value="{{ task.status.value }}" selected>{{ task.status.value|replace('_', ' ')|capitalize }} (actuel)</option>
+        {% for st in statuses %}
+          {% if st != task.status and task.can_transition_to(st) %}
+          <option value="{{ st.value }}">{{ st.value|replace('_', ' ')|capitalize }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+      <p class="text-[11px] text-slate-400 mt-1">Seules les transitions autorisées par les règles métier sont proposées.</p>
+    </div>
+    {% endif %}
+
+    <!-- Commentaire -->
+    <div>
+      <label class="block text-sm font-medium text-slate-700 mb-1" for="comment">Commentaire de supervision</label>
+      <textarea id="comment" name="comment" rows="2"
+                placeholder="Consignes particulières ou remarques..."
+                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">{{ form.comment if form else (task.comment if task and task.comment else '') }}</textarea>
+    </div>
+
+    <!-- Boutons -->
+    <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+      <a href="{{ url_for('tasks.view_task', task_id=task.id) if task else url_for('tasks.list_tasks') }}"
+         class="rounded-md border border-slate-300 bg-white text-slate-700 px-4 py-2 text-sm font-medium hover:bg-slate-50">
+        Annuler
+      </a>
+      <button type="submit" class="rounded-md bg-slate-900 text-white px-5 py-2 text-sm font-medium hover:bg-slate-800 shadow">
+        {{ "Mettre à jour la tâche" if task else "Créer la tâche" }}
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+function toggleTaskTypeFields() {
+  const typeSelect = document.getElementById('task_type');
+  const quantFields = document.getElementById('quantitative_fields');
+  const qualFields = document.getElementById('qualitative_fields');
+  if (typeSelect.value === 'quantitative') {
+    quantFields.classList.remove('hidden');
+    qualFields.classList.add('hidden');
+  } else {
+    quantFields.classList.add('hidden');
+    qualFields.classList.remove('hidden');
+  }
+}
+
+// Initialisation au chargement
+document.addEventListener('DOMContentLoaded', function() {
+  toggleTaskTypeFields();
+
+  // Mise à jour dynamique des membres lors du changement d'équipe
+  const teamSelect = document.getElementById('team_id');
+  const respSelect = document.getElementById('responsible_id');
+  const coRespSelect = document.getElementById('co_responsible_id');
+
+  if (teamSelect && respSelect && coRespSelect) {
+    teamSelect.addEventListener('change', function() {
+      const teamId = this.value;
+      if (!teamId) return;
+
+      fetch('/tasks/teams/' + teamId + '/members')
+        .then(response => response.json())
+        .then(members => {
+          const currentResp = respSelect.value;
+          const currentCoResp = coRespSelect.value;
+
+          respSelect.innerHTML = '<option value="">Sélectionner un membre</option>';
+          coRespSelect.innerHTML = '<option value="">Aucun co-responsable</option>';
+
+          members.forEach(m => {
+            const opt1 = document.createElement('option');
+            opt1.value = m.id;
+            opt1.textContent = m.name;
+            if (m.id == currentResp) opt1.selected = true;
+            respSelect.appendChild(opt1);
+
+            const opt2 = document.createElement('option');
+            opt2.value = m.id;
+            opt2.textContent = m.name;
+            if (m.id == currentCoResp) opt2.selected = true;
+            coRespSelect.appendChild(opt2);
+          });
+        })
+        .catch(err => console.error("Erreur de chargement des membres:", err));
+    });
+  }
+});
+</script>
+{% endblock %}

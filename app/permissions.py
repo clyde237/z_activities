@@ -44,6 +44,26 @@ def can_lead_team(user: User, team_id: int) -> bool:
     return user.is_team_lead_of(team_id)
 
 
+def can_create_task(user: User, team_id: int | None = None) -> bool:
+    """RB-004 : Le chef de service et les chefs d'équipe peuvent planifier des tâches."""
+    if user.role == UserRole.CHEF_SERVICE:
+        return True
+    if team_id is not None:
+        return user.is_team_lead_of(team_id)
+    return any(link.is_team_lead for link in user.team_links)
+
+
+def can_view_task(user: User, task) -> bool:
+    """Vérifie si l'utilisateur a le droit de consulter la tâche."""
+    if user.role == UserRole.CHEF_SERVICE:
+        return True
+    if user.is_team_lead_of(task.team_id):
+        return True
+    if user.id in {task.responsible_id, task.co_responsible_id}:
+        return True
+    return task.team_id in user.team_ids()
+
+
 def can_edit_task(user: User, task) -> bool:
     """RB-013 : un membre ne modifie pas les infos structurantes d'une tâche
     qui lui est affectée. Seuls le chef de service et le chef d'équipe de
@@ -59,3 +79,4 @@ def can_update_task_progress(user: User, task) -> bool:
     if can_edit_task(user, task):
         return True
     return user.id in {task.responsible_id, task.co_responsible_id}
+

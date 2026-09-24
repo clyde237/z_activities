@@ -96,6 +96,20 @@ pytest
 
 `flask seed-teams` crée les 5 équipes par défaut du département.
 
-**Reste à construire (phases 2 à 6 du CDC) :** tâches et mises à jour
-quotidiennes, activités imprévues, génération des rapports (hebdomadaire
-auto le vendredi + export Word), tableaux de bord par rôle avec Chart.js.
+**Phase 2 (Gestion des tâches) terminée :**
+- Planification et création de tâches par le Chef de service et les Chefs d'équipe (RB-004)
+- Affectation à un membre de l'équipe et co-responsable optionnel (RB-006, RB-007)
+- Tâches quantitatives avec calcul automatique de progression (RB-010, RB-011)
+- Tâches qualitatives avec saisie manuelle de progression (RB-012)
+- Cycle de vie et transitions de statuts contrôlées (`ALLOWED_STATUS_TRANSITIONS`)
+- Détection et signalement automatique des retards d'échéance (RB-015)
+- Protection des informations structurantes réservée à l'encadrement (RB-013)
+- Interface de gestion avec filtres (Toutes, Mes tâches, En retard, par équipe et statut)
+- Vue détaillée d'une tâche et intégration des indicateurs au tableau de bord (CDC 18, 19, 20)
+- Traçabilité complète des créations et modifications dans `audit_logs` (RB-028)
+
+**Reste à construire (phases 3 à 6 du CDC) :**
+- Phase 3 : Mises à jour quotidiennes, historique, difficultés, prochaine étape, activités imprévues.
+- Phase 4 : Rapports hebdomadaires (génération auto vendredi, édition, soumission, validation, export Word).
+- Phase 5 : Tableaux de bord de supervision avancés avec graphiques (Chart.js) et recherche d'historique.
+- Phase 6 : Rapport mensuel départemental (consolidation, ajustement, finalisation, export).

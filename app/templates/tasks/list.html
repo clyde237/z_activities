@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}Gestion des tâches{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Tâches</h1>
+      <p class="text-xs text-slate-500 mt-1">Planification, suivi et progression des activités du département.</p>
+    </div>
+    {% if can_create %}
+    <div>
+      <a href="{{ url_for('tasks.create_new_task') }}" class="inline-flex items-center rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 shadow">
+        + Nouvelle tâche
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Filtres & Modes de vue -->
+  <div class="bg-white p-4 rounded-xl shadow space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+      <!-- Onglets de filtres rapides -->
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('tasks.list_tasks', filter='all', team_id=current_team_id, status=current_status) }}"
+           class="px-3 py-1.5 rounded-lg text-xs font-medium {{ 'bg-slate-900 text-white' if current_filter == 'all' else 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+          Toutes
+        </a>
+        <a href="{{ url_for('tasks.list_tasks', filter='mine', team_id=current_team_id, status=current_status) }}"
+           class="px-3 py-1.5 rounded-lg text-xs font-medium {{ 'bg-slate-900 text-white' if current_filter == 'mine' else 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">
+          Mes tâches
+        </a>
+        <a href="{{ url_for('tasks.list_tasks', filter='late', team_id=current_team_id, status=current_status) }}"
+           class="px-3 py-1.5 rounded-lg text-xs font-medium {{ 'bg-rose-600 text-white' if current_filter == 'late' else 'bg-rose-50 text-rose-700 hover:bg-rose-100' }}">
+          En retard
+        </a>
+      </div>
+
+      <!-- Filtres sélecteurs -->
+      <form method="get" class="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="filter" value="{{ current_filter }}">
+        
+        {% if filter_teams|length > 1 %}
+        <select name="team_id" onchange="this.form.submit()" class="text-xs rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+          <option value="">Toutes les équipes</option>
+          {% for t in filter_teams %}
+          <option value="{{ t.id }}" {% if current_team_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+        {% endif %}
+
+        <select name="status" onchange="this.form.submit()" class="text-xs rounded-md border border-slate-300 px-2.5 py-1.5 bg-white">
+          <option value="">Tous les statuts</option>
+          {% for st in statuses %}
+          <option value="{{ st.value }}" {% if current_status == st.value %}selected{% endif %}>
+            {{ st.value|replace('_', ' ')|capitalize }}
+          </option>
+          {% endfor %}
+        </select>
+
+        {% if current_team_id or current_status or current_filter != 'all' %}
+        <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs text-slate-500 hover:text-slate-800 underline">
+          Réinitialiser
+        </a>
+        {% endif %}
+      </form>
+    </div>
+
+    <!-- Compteur -->
+    <div class="text-xs text-slate-500">
+      {{ tasks|length }} tâche{{ "s" if tasks|length > 1 else "" }} affichée{{ "s" if tasks|length > 1 else "" }}
+    </div>
+  </div>
+
+  <!-- Table des tâches -->
+  <div class="bg-white rounded-xl shadow overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-100 text-left text-xs uppercase text-slate-600 tracking-wider">
+        <tr>
+          <th class="px-4 py-3">Tâche</th>
+          <th class="px-4 py-3">Équipe</th>
+          <th class="px-4 py-3">Responsable(s)</th>
+          <th class="px-4 py-3">Échéance</th>
+          <th class="px-4 py-3">Progression</th>
+          <th class="px-4 py-3">Statut</th>
+          <th class="px-4 py-3 text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {% for task in tasks %}
+        <tr class="hover:bg-slate-50 transition">
+          <td class="px-4 py-3">
+            <div class="font-medium text-slate-900">
+              <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="hover:underline">
+                {{ task.title }}
+              </a>
+            </div>
+            {% if task.description %}
+            <p class="text-xs text-slate-500 line-clamp-1 mt-0.5">{{ task.description }}</p>
+            {% endif %}
+            <div class="flex items-center gap-1.5 mt-1">
+              {% if task.priority.value == 'urgente' %}
+                <span class="rounded bg-red-100 text-red-800 px-1.5 py-0.5 text-[10px] font-semibold">Urgente</span>
+              {% elif task.priority.value == 'haute' %}
+                <span class="rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-[10px] font-semibold">Haute</span>
+              {% elif task.priority.value == 'basse' %}
+                <span class="rounded bg-slate-100 text-slate-600 px-1.5 py-0.5 text-[10px]">Basse</span>
+              {% endif %}
+              <span class="text-[11px] text-slate-400">
+                {{ "Quantitative" if task.task_type.value == 'quantitative' else "Qualitative" }}
+              </span>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-xs text-slate-700">
+            <span class="inline-block rounded-full bg-slate-100 px-2.5 py-1 font-medium">
+              {{ task.team.name }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-xs">
+            <div class="font-medium text-slate-900">{{ task.responsible.full_name }}</div>
+            {% if task.co_responsible %}
+            <div class="text-[11px] text-slate-500 mt-0.5">
+              + {{ task.co_responsible.full_name }} <span class="italic text-slate-400">(co-resp.)</span>
+            </div>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-xs whitespace-nowrap">
+            <span class="{{ 'text-rose-600 font-semibold' if task.is_late() else 'text-slate-700' }}">
+              {{ task.due_date.strftime('%d/%m/%Y') }}
+            </span>
+            {% if task.is_late() %}
+            <span class="block text-[10px] font-bold text-rose-600 uppercase tracking-tight">En retard</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-xs">
+            <div class="w-28 space-y-1">
+              <div class="flex justify-between text-[11px]">
+                <span class="font-medium text-slate-700">{{ task.progress|round(1) }}%</span>
+                {% if task.task_type.value == 'quantitative' and task.objective %}
+                <span class="text-slate-400">{{ task.realized|round(0)|int }}/{{ task.objective|round(0)|int }}</span>
+                {% endif %}
+              </div>
+              <div class="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                <div class="h-1.5 rounded-full {{ 'bg-emerald-500' if task.progress >= 100 else 'bg-blue-600' }}"
+                     style="width: {{ task.progress }}%"></div>
+              </div>
+            </div>
+          </td>
+          <td class="px-4 py-3 text-xs">
+            {% if task.status.value == 'terminee' %}
+              <span class="rounded-full bg-emerald-100 text-emerald-800 px-2.5 py-0.5 font-medium">Terminée</span>
+            {% elif task.status.value == 'en_cours' %}
+              <span class="rounded-full bg-blue-100 text-blue-800 px-2.5 py-0.5 font-medium">En cours</span>
+            {% elif task.status.value == 'a_valider' %}
+              <span class="rounded-full bg-purple-100 text-purple-800 px-2.5 py-0.5 font-medium">À valider</span>
+            {% elif task.status.value == 'bloquee' %}
+              <span class="rounded-full bg-rose-100 text-rose-800 px-2.5 py-0.5 font-medium">Bloquée</span>
+            {% elif task.status.value == 'reportee' %}
+              <span class="rounded-full bg-amber-100 text-amber-800 px-2.5 py-0.5 font-medium">Reportée</span>
+            {% elif task.status.value == 'annulee' %}
+              <span class="rounded-full bg-slate-200 text-slate-700 px-2.5 py-0.5 font-medium">Annulée</span>
+            {% else %}
+              <span class="rounded-full bg-slate-100 text-slate-700 px-2.5 py-0.5 font-medium">À faire</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3 text-right text-xs whitespace-nowrap space-x-2">
+            <a href="{{ url_for('tasks.view_task', task_id=task.id) }}" class="text-slate-600 hover:text-slate-900 font-medium">
+              Voir
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="px-4 py-12 text-center text-slate-400 text-sm">
+            Aucune tâche ne correspond à ces critères.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

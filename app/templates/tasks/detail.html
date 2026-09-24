@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Tâche : {{ task.title }}{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs text-slate-500 hover:text-slate-800">
+          &larr; Liste des tâches
+        </a>
+        <span class="text-slate-300">/</span>
+        <span class="text-xs text-slate-500">{{ task.team.name }}</span>
+      </div>
+      <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ task.title }}</h1>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if can_edit %}
+      <a href="{{ url_for('tasks.edit_task_route', task_id=task.id) }}"
+         class="rounded-md border border-slate-300 bg-white text-slate-700 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 shadow-sm">
+        Modifier la tâche
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if task.is_late() %}
+  <div class="rounded-lg bg-rose-50 border border-rose-200 p-4 text-rose-800 text-xs flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span class="text-base">⚠️</span>
+      <span><strong>Tâche en retard :</strong> l'échéance du {{ task.due_date.strftime('%d/%m/%Y') }} est dépassée.</span>
+    </div>
+    <span class="font-bold uppercase tracking-wider text-[10px] bg-rose-200 text-rose-900 px-2 py-0.5 rounded">En retard</span>
+  </div>
+  {% endif %}
+
+  <!-- Carte principale -->
+  <div class="bg-white rounded-xl shadow divide-y divide-slate-100">
+    <!-- Barre de statut & progression -->
+    <div class="p-6 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Statut</span>
+          <div class="mt-1">
+            {% if task.status.value == 'terminee' %}
+              <span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold">Terminée</span>
+            {% elif task.status.value == 'en_cours' %}
+              <span class="rounded-full bg-blue-100 text-blue-800 px-3 py-1 text-xs font-semibold">En cours</span>
+            {% elif task.status.value == 'a_valider' %}
+              <span class="rounded-full bg-purple-100 text-purple-800 px-3 py-1 text-xs font-semibold">À valider</span>
+            {% elif task.status.value == 'bloquee' %}
+              <span class="rounded-full bg-rose-100 text-rose-800 px-3 py-1 text-xs font-semibold">Bloquée</span>
+            {% elif task.status.value == 'reportee' %}
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">Reportée</span>
+            {% elif task.status.value == 'annulee' %}
+              <span class="rounded-full bg-slate-200 text-slate-700 px-3 py-1 text-xs font-semibold">Annulée</span>
+            {% else %}
+              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs font-semibold">À faire</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div>
+          <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Priorité</span>
+          <div class="mt-1">
+            {% if task.priority.value == 'urgente' %}
+              <span class="rounded bg-red-100 text-red-800 px-2 py-0.5 text-xs font-bold">Urgente</span>
+            {% elif task.priority.value == 'haute' %}
+              <span class="rounded bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-semibold">Haute</span>
+            {% elif task.priority.value == 'basse' %}
+              <span class="rounded bg-slate-100 text-slate-600 px-2 py-0.5 text-xs">Basse</span>
+            {% else %}
+              <span class="rounded bg-slate-100 text-slate-700 px-2 py-0.5 text-xs">Normale</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div>
+          <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Type</span>
+          <div class="mt-1 text-xs font-medium text-slate-700">
+            {{ "Quantitative" if task.task_type.value == 'quantitative' else "Qualitative" }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Barre de progression -->
+      <div class="space-y-1.5 pt-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-medium text-slate-700">Progression globale</span>
+          <span class="font-bold text-slate-900">{{ task.progress|round(1) }} %</span>
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+          <div class="h-2.5 rounded-full {{ 'bg-emerald-500' if task.progress >= 100 else 'bg-blue-600' }} transition-all"
+               style="width: {{ task.progress }}%"></div>
+        </div>
+        {% if task.task_type.value == 'quantitative' and task.objective %}
+        <p class="text-[11px] text-slate-500">
+          Quantité réalisée : <strong>{{ task.realized|round(0)|int }}</strong> sur un objectif de <strong>{{ task.objective|round(0)|int }}</strong>.
+        </p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Description -->
+    {% if task.description %}
+    <div class="p-6 space-y-1">
+      <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Description</h2>
+      <p class="text-sm text-slate-700 whitespace-pre-line">{{ task.description }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Détails organisationnels -->
+    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+      <!-- Responsables -->
+      <div class="space-y-3">
+        <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Responsables affectés</h2>
+        <div class="space-y-2">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
+              {{ task.responsible.first_name[0] }}{{ task.responsible.last_name[0] }}
+            </div>
+            <div>
+              <p class="font-medium text-slate-900">{{ task.responsible.full_name }}</p>
+              <p class="text-xs text-slate-500">Responsable principal {% if task.responsible.function %}&bull; {{ task.responsible.function }}{% endif %}</p>
+            </div>
+          </div>
+
+          {% if task.co_responsible %}
+          <div class="flex items-center gap-3 pt-1">
+            <div class="w-8 h-8 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold text-xs">
+              {{ task.co_responsible.first_name[0] }}{{ task.co_responsible.last_name[0] }}
+            </div>
+            <div>
+              <p class="font-medium text-slate-900">{{ task.co_responsible.full_name }}</p>
+              <p class="text-xs text-slate-500">Co-responsable {% if task.co_responsible.function %}&bull; {{ task.co_responsible.function }}{% endif %}</p>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Dates & Échéances -->
+      <div class="space-y-3">
+        <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Calendrier</h2>
+        <div class="space-y-1.5 text-xs text-slate-700">
+          <div class="flex justify-between">
+            <span class="text-slate-400">Date de début :</span>
+            <span class="font-medium">{{ task.start_date.strftime('%d/%m/%Y') }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">Date d'échéance :</span>
+            <span class="font-medium {{ 'text-rose-600 font-bold' if task.is_late() else '' }}">
+              {{ task.due_date.strftime('%d/%m/%Y') }}
+            </span>
+          </div>
+          <div class="flex justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+            <span>Créée le :</span>
+            <span>{{ task.created_at.strftime('%d/%m/%Y à %H:%M') }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commentaire -->
+    {% if task.comment %}
+    <div class="p-6 space-y-1">
+      <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Commentaire</h2>
+      <p class="text-xs text-slate-600 italic">{{ task.comment }}</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Bloc mises à jour (Phase 3) -->
+  <div class="bg-white rounded-xl shadow p-6 space-y-3">
+    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+      <h2 class="font-semibold text-slate-900">Mises à jour quotidiennes</h2>
+      <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">Phase 3</span>
+    </div>
+    <p class="text-xs text-slate-500">
+      Le suivi quotidien, la documentation du travail réalisé et les difficultés seront enregistrés ici dès la Phase 3.
+    </p>
+  </div>
+</div>
+{% endblock %}
