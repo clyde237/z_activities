@@ -32,4 +32,14 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     register_routes(app)
     register_cli(app)
 
+    @app.errorhandler(403)
+    def forbidden(_error):
+        from flask import render_template
+        return render_template("errors/403.html"), 403
+
+    @app.errorhandler(404)
+    def not_found(_error):
+        from flask import render_template
+        return render_template("errors/404.html"), 404
+
     return app

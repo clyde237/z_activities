@@ -1,7 +1,6 @@
-from datetime import datetime
-
 from ..extensions import db
 from .enums import MonthlyReportStatus, WeeklyReportStatus
+from .utils import utc_now
 
 # RB-021/023: brouillon à la génération; seul le chef de service valide.
 WEEKLY_REPORT_TRANSITIONS: dict[WeeklyReportStatus, set[WeeklyReportStatus]] = {
@@ -34,7 +33,7 @@ class WeeklyReport(db.Model):
     validated_at = db.Column(db.DateTime)
     validated_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     monthly_report_id = db.Column(db.Integer, db.ForeignKey("monthly_reports.id"))
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     user = db.relationship("User", foreign_keys=[user_id])
     validated_by = db.relationship("User", foreign_keys=[validated_by_id])
@@ -65,7 +64,7 @@ class MonthlyReport(db.Model):
     observations = db.Column(db.Text)
     finalized_at = db.Column(db.DateTime)
     finalized_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     finalized_by = db.relationship("User")
     weekly_reports = db.relationship("WeeklyReport", back_populates="monthly_report")

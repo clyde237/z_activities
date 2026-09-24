@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Page non trouvée (404){% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-8 rounded-xl shadow text-center space-y-4">
+  <div class="text-4xl">🔍</div>
+  <h1 class="text-xl font-bold text-slate-900">Page introuvable</h1>
+  <p class="text-sm text-slate-600">
+    La ressource demandée n'existe pas ou a été déplacée.
+  </p>
+  <div class="pt-2">
+    <a href="{{ url_for('dashboard.index') }}" class="inline-block rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium">
+      Retour au tableau de bord
+    </a>
+  </div>
+</div>
+{% endblock %}

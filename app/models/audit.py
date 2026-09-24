@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from ..extensions import db
+from .utils import utc_now
 
 
 class AuditLog(db.Model):
@@ -19,7 +18,7 @@ class AuditLog(db.Model):
     object_id = db.Column(db.Integer)
     old_value = db.Column(db.Text)
     new_value = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now, index=True)
 
     user = db.relationship("User")
 

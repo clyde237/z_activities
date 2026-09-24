@@ -5,6 +5,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from ..extensions import db, login_manager
 from .enums import UserRole
+from .utils import utc_now
 
 
 class User(UserMixin, db.Model):
@@ -22,7 +23,7 @@ class User(UserMixin, db.Model):
         default=UserRole.COLLABORATEUR,
     )
     is_active_account = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     team_links = db.relationship(
         "UserTeam", back_populates="user", cascade="all, delete-orphan"

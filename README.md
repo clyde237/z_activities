@@ -88,8 +88,10 @@ pytest
 - Gestion des équipes (création, modification)
 - Affectation d'un utilisateur à plusieurs équipes, désignation par équipe
   d'un chef d'équipe (`UserTeam.is_team_lead`)
+- Consultation des équipes et membres supervisés sur le tableau de bord (chef d'équipe et collaborateur)
+- Visualisation de la composition de chaque équipe (membres et chefs désignés)
 - Contrôle d'accès serveur (403 pour un collaborateur hors périmètre chef
-  de service), pas seulement des liens masqués côté interface
+  de service), avec pages d'erreur dédiées (403, 404)
 - Journal d'audit sur les créations/modifications sensibles
 
 `flask seed-teams` crée les 5 équipes par défaut du département.

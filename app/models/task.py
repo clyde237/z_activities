@@ -1,7 +1,8 @@
-from datetime import date, datetime
+from datetime import date
 
 from ..extensions import db
 from .enums import TaskPriority, TaskStatus, TaskType
+from .utils import utc_now
 
 # Transitions de statut autorisées (RB-014, section 10). Centralisé ici pour
 # qu'aucune route ne puisse faire sauter une tâche d'un état à un autre
@@ -56,9 +57,9 @@ class Task(db.Model):
     accounting_period_id = db.Column(
         db.Integer, db.ForeignKey("accounting_periods.id")
     )
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
     updated_at = db.Column(
-        db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
+        db.DateTime, nullable=False, default=utc_now, onupdate=utc_now
     )
 
     team = db.relationship("Team")
@@ -112,7 +113,7 @@ class TaskUpdate(db.Model):
     work_done = db.Column(db.Text, nullable=False)
     difficulties = db.Column(db.Text)
     next_step = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     task = db.relationship("Task", back_populates="updates")
     user = db.relationship("User")

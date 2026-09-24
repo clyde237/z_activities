@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from ..extensions import db
+from .utils import utc_now
 
 
 class Notification(db.Model):
@@ -13,7 +12,7 @@ class Notification(db.Model):
     related_object_type = db.Column(db.String(50))
     related_object_id = db.Column(db.Integer)
     is_read = db.Column(db.Boolean, nullable=False, default=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now, index=True)
 
     user = db.relationship("User")
 

@@ -1,6 +1,5 @@
-from datetime import datetime
-
 from ..extensions import db
+from .utils import utc_now
 
 
 class Team(db.Model):
@@ -34,7 +33,7 @@ class UserTeam(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), nullable=False)
     is_team_lead = db.Column(db.Boolean, nullable=False, default=False)
-    joined_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    joined_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     user = db.relationship("User", back_populates="team_links")
     team = db.relationship("Team", back_populates="member_links")

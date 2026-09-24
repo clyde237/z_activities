@@ -1,7 +1,6 @@
-from datetime import datetime
-
 from ..extensions import db
 from .enums import TaskPriority
+from .utils import utc_now
 
 
 class UnexpectedActivity(db.Model):
@@ -26,7 +25,7 @@ class UnexpectedActivity(db.Model):
     )
     result = db.Column(db.Text)  # résultat obtenu
     responsible_comment = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
     user = db.relationship("User")
 
