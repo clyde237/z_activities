@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Rapports mensuels départementaux{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Rapports mensuels départementaux</h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Consolidation mensuelle globale des activités, indicateurs par équipe et synthèses de direction (CDC Section 17 & 28).
+      </p>
+    </div>
+
+    {% if current_user.is_chef_service() %}
+    <!-- Formulaire rapide de génération d'un rapport mensuel pour le Chef de service -->
+    <div class="bg-white p-3 rounded-xl shadow border border-slate-200">
+      <form method="post" action="{{ url_for('monthly_reports.generate_monthly_report_route') }}" class="flex items-center gap-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="text-xs font-semibold text-slate-700">Initier un mois :</div>
+        <select name="month" class="text-xs border rounded px-2 py-1 bg-slate-50">
+          {% set months_list = [
+            (1, 'Janvier'), (2, 'Février'), (3, 'Mars'), (4, 'Avril'),
+            (5, 'Mai'), (6, 'Juin'), (7, 'Juillet'), (8, 'Août'),
+            (9, 'Septembre'), (10, 'Octobre'), (11, 'Novembre'), (12, 'Décembre')
+          ] %}
+          {% for m_num, m_name in months_list %}
+          <option value="{{ m_num }}" {% if m_num == default_gen_month %}selected{% endif %}>{{ m_name }}</option>
+          {% endfor %}
+        </select>
+        <input type="number" name="year" value="{{ default_gen_year }}" min="2020" max="2035" class="text-xs border rounded w-16 px-2 py-1 bg-slate-50">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm">
+          Générer / Consulter &rarr;
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Liste des rapports mensuels -->
+  <div class="bg-white rounded-xl shadow overflow-hidden border border-slate-200">
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
+        Historique des rapports mensuels départementaux
+      </h2>
+      <span class="text-xs text-slate-500">{{ reports|length }} rapport{{ "s" if reports|length > 1 else "" }}</span>
+    </div>
+
+    {% if reports %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-600">
+        <thead class="bg-slate-50 text-[11px] font-semibold text-slate-700 uppercase tracking-wider border-b border-slate-200">
+          <tr>
+            <th class="px-4 py-3">Période mensuelle</th>
+            <th class="px-4 py-3">Statut</th>
+            <th class="px-4 py-3">Rapports hebdos liés</th>
+            <th class="px-4 py-3">Initié par</th>
+            <th class="px-4 py-3">Finalisation</th>
+            <th class="px-4 py-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for r in reports %}
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-4 py-3.5">
+              <a href="{{ url_for('monthly_reports.detail_monthly_report', id=r.id) }}" class="font-bold text-slate-900 text-sm hover:underline text-blue-900">
+                {{ r.month_name }} {{ r.year }}
+              </a>
+              <p class="text-[11px] text-slate-400">Département Comptabilité & Finance</p>
+            </td>
+            <td class="px-4 py-3.5 whitespace-nowrap">
+              {% if r.status.value == 'finalise' %}
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                ✓ FINALISÉ
+              </span>
+              {% else %}
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">
+                📝 BROUILLON
+              </span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3.5 whitespace-nowrap">
+              <span class="font-semibold text-slate-700">{{ r.weekly_reports|length }}</span> rapport(s) rattaché(s)
+            </td>
+            <td class="px-4 py-3.5 whitespace-nowrap">
+              {{ r.created_by.full_name if r.created_by else 'Chef de Service' }}
+            </td>
+            <td class="px-4 py-3.5 whitespace-nowrap text-slate-500">
+              {% if r.finalized_at %}
+                <span class="text-slate-800 font-medium">{{ r.finalized_at.strftime('%d/%m/%Y') }}</span>
+                <span class="text-[10px] text-slate-400 block">par {{ r.finalized_by.full_name if r.finalized_by else 'Chef de service' }}</span>
+              {% else %}
+                <span class="text-slate-400 italic">En attente de finalisation</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-3.5 text-right whitespace-nowrap space-x-2">
+              <a href="{{ url_for('monthly_reports.detail_monthly_report', id=r.id) }}"
+                 class="inline-block px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded border border-slate-200">
+                Détails
+              </a>
+              {% if current_user.is_chef_service() and r.status.value == 'brouillon' %}
+              <a href="{{ url_for('monthly_reports.edit_monthly_report', id=r.id) }}"
+                 class="inline-block px-2.5 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200">
+                Ajuster
+              </a>
+              {% endif %}
+              <a href="{{ url_for('monthly_reports.export_docx', id=r.id) }}"
+                 class="inline-block px-2.5 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-200"
+                 title="Télécharger au format Word (.docx)">
+                📄 Word
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-12 text-center text-slate-400 text-sm">
+      <p class="text-lg mb-1">📅 Aucun rapport mensuel généré pour le moment.</p>
+      <p class="text-xs">
+        {% if current_user.is_chef_service() %}
+        Utilisez le formulaire en haut à droite pour consolider et générer le premier rapport mensuel départemental.
+        {% else %}
+        Le Chef de service n'a pas encore initié de rapport mensuel pour le département.
+        {% endif %}
+      </p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

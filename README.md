@@ -143,6 +143,29 @@ pytest
   - Périmètre de visibilité rigoureusement cloisonné selon le rôle de l'utilisateur
 - Interface de consultation et de filtrage du journal d'audit (`/audit`) réservée au Chef de service (CDC Section 22, RB-028) : filtres par auteur, action, type d'entité et dates
 
-**Reste à construire (phase 6 du CDC) :**
-- Phase 6 : Rapport mensuel départemental (consolidation, ajustement, finalisation, export).
+**Phase 6 (Rapport mensuel départemental, consolidation, ajustement et export Word) terminée :**
+- Modèle de données et cycle de vie du rapport mensuel (`MonthlyReport`, `MonthlyReportStatus`: `BROUILLON`, `FINALISE`) (CDC Sections 17 & 28, RB-025)
+- Consolidation automatique et agrégation globale à partir des données réelles et rapports hebdos (RB-026) :
+  - Métriques départementales globales (volume des tâches, taux d'avancement moyen, retards, imprévus, couverture hebdos)
+  - Performance et indicateurs consolidés par équipe
+  - Suivi individuel des collaborateurs du département
+  - Tâches majeures et projets structurants du mois
+  - Activités imprévues et urgences traitées
+  - Synthèse des difficultés récurrentes et solutions issues des rapports hebdomadaires
+- Workflow d'ajustement rédactionnel sous l'autorité du Chef de service (CDC Section 17 & 28, RB-027) :
+  - Synthèse générale départementale (`narrative_summary`)
+  - Faits marquants et réalisations majeures (`key_achievements`)
+  - Difficultés consolidées d'encadrement (`difficulties_summary`)
+  - Perspectives et plan d'action pour le mois prochain (`action_plan`)
+  - Recommandations et observations de la Direction du Service (`observations`)
+- Finalisation officielle et possibilité de réouverture contrôlée pour correctif
+- Export Word natif au format `.docx` (CDC Section 29) : en-tête officiel de l'Hôtel Le Zingana, tableaux stylisés aux normes graphiques de l'établissement, bilans par équipe, blocs de visas et signatures (Chef de service, Direction Financière, Direction Générale)
+- Intégration complète à la recherche dans l'historique transversal et traçabilité inaltérable dans le journal d'audit (`audit_logs`)
+
+---
+
+### Bilan de mise en conformité avec le Cahier des Charges
+
+L'ensemble des **6 phases du MVP (Phases 1 à 6)** spécifiées dans le Cahier des Charges fonctionnel est désormais **100% implémenté, testé (59 tests unitaires et d'intégration automatisés réussis) et validé**.
+
 

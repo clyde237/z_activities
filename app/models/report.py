@@ -46,6 +46,27 @@ class WeeklyReport(db.Model):
         return f"<WeeklyReport user={self.user_id} {self.period_start}..{self.period_end}>"
 
 
+MONTHLY_REPORT_TRANSITIONS: dict[MonthlyReportStatus, set[MonthlyReportStatus]] = {
+    MonthlyReportStatus.BROUILLON: {MonthlyReportStatus.FINALISE},
+    MonthlyReportStatus.FINALISE: {MonthlyReportStatus.BROUILLON},
+}
+
+MONTH_NAMES_FR = {
+    1: "Janvier",
+    2: "Février",
+    3: "Mars",
+    4: "Avril",
+    5: "Mai",
+    6: "Juin",
+    7: "Juillet",
+    8: "Août",
+    9: "Septembre",
+    10: "Octobre",
+    11: "Novembre",
+    12: "Décembre",
+}
+
+
 class MonthlyReport(db.Model):
     __tablename__ = "monthly_reports"
     __table_args__ = (
@@ -61,13 +82,29 @@ class MonthlyReport(db.Model):
         default=MonthlyReportStatus.BROUILLON,
     )
     narrative_summary = db.Column(db.Text)
+    key_achievements = db.Column(db.Text)
+    difficulties_summary = db.Column(db.Text)
+    action_plan = db.Column(db.Text)
     observations = db.Column(db.Text)
+    created_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     finalized_at = db.Column(db.DateTime)
     finalized_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     created_at = db.Column(db.DateTime, nullable=False, default=utc_now)
 
-    finalized_by = db.relationship("User")
+    created_by = db.relationship("User", foreign_keys=[created_by_id])
+    finalized_by = db.relationship("User", foreign_keys=[finalized_by_id])
     weekly_reports = db.relationship("WeeklyReport", back_populates="monthly_report")
 
+    def can_transition_to(self, new_status: MonthlyReportStatus) -> bool:
+        return new_status in MONTHLY_REPORT_TRANSITIONS.get(self.status, set())
+
+    @property
+    def month_name(self) -> str:
+        return MONTH_NAMES_FR.get(self.month, f"Mois {self.month}")
+
+    @property
+    def title(self) -> str:
+        return f"Rapport mensuel départemental - {self.month_name} {self.year}"
+
     def __repr__(self) -> str:
-        return f"<MonthlyReport {self.month}/{self.year}>"
+        return f"<MonthlyReport {self.month}/{self.year} ({self.status.value})>"

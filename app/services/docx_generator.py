@@ -4,7 +4,13 @@ import zipfile
 from datetime import date, datetime
 from typing import Any
 
-from ..models import TaskStatus, WeeklyReport, WeeklyReportStatus
+from ..models import (
+    MonthlyReport,
+    MonthlyReportStatus,
+    TaskStatus,
+    WeeklyReport,
+    WeeklyReportStatus,
+)
 
 
 def _esc(val: Any) -> str:
@@ -255,7 +261,11 @@ def generate_weekly_report_docx(report: WeeklyReport, report_data: dict[str, Any
     ]
     body_elements.append(_table(sig_headers, sig_rows, col_widths=[3000, 3000, 3000], header_bg="1B365D"))
 
-    # Assemblage OpenXML
+    return _build_docx_buffer(body_elements)
+
+
+def _build_docx_buffer(body_elements: list[str]) -> io.BytesIO:
+    """Assemble un document OpenXML complet dans un buffer mémoire zip valide."""
     doc_xml = f"""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
   <w:body>
@@ -287,3 +297,178 @@ def generate_weekly_report_docx(report: WeeklyReport, report_data: dict[str, Any
 
     buffer.seek(0)
     return buffer
+
+
+def generate_monthly_report_docx(
+    report: MonthlyReport,
+    report_data: dict[str, Any],
+) -> io.BytesIO:
+    """Génère le document Word (.docx) du rapport mensuel départemental (CDC Sections 17 & 29)."""
+    tasks_stats = report_data.get("tasks_stats", {})
+    reports_stats = report_data.get("reports_stats", {})
+    teams_summary = report_data.get("teams_summary", [])
+    members_summary = report_data.get("members_summary", [])
+    tasks = report_data.get("tasks", [])
+    unexpected = report_data.get("unexpected_activities", [])
+    collected_difficulties = report_data.get("collected_difficulties", [])
+    collected_solutions = report_data.get("collected_solutions", [])
+
+    body_elements: list[str] = []
+
+    # En-tête officiel de l'établissement
+    body_elements.append(_p("HÔTEL LE ZINGANA", size=32, bold=True, color="1B365D", align="center", space_before=0, space_after=40))
+    body_elements.append(_p("DÉPARTEMENT COMPTABILITÉ & FINANCE", size=20, bold=True, color="4A5568", align="center", space_before=0, space_after=120))
+    body_elements.append(_p("RAPPORT MENSUEL D'ACTIVITÉS DÉPARTEMENTAL", size=28, bold=True, color="2B6CB0", align="center", space_before=80, space_after=40))
+    body_elements.append(_p(f"Mois de {report.month_name} {report.year}", size=24, bold=True, color="1B365D", align="center", space_before=0, space_after=40))
+    body_elements.append(_p(
+        f"Période du {_fmt_date(report_data.get('period_start'))} au {_fmt_date(report_data.get('period_end'))}",
+        size=20,
+        italic=True,
+        color="718096",
+        align="center",
+        space_before=0,
+        space_after=200,
+    ))
+
+    # 1. Informations générales
+    body_elements.append(_heading("1. Informations générales & Cadre de gestion", level=2))
+    info_headers = ["Paramètre", "Détail"]
+    creator_name = report.created_by.full_name if report.created_by else "Chef de Service"
+    finalizer_name = report.finalized_by.full_name if report.finalized_by else "-"
+    info_rows = [
+        ["Département", "Comptabilité & Finance"],
+        ["Période couverte", f"Du {_fmt_date(report_data.get('period_start'))} au {_fmt_date(report_data.get('period_end'))}"],
+        ["Statut du rapport", report.status.value.upper()],
+        ["Initié par", creator_name],
+        ["Finalisé par", f"{finalizer_name} le {_fmt_date(report.finalized_at)}" if report.finalized_at else "En cours de consolidation"],
+        ["Date d'édition", _fmt_date(datetime.now())],
+    ]
+    body_elements.append(_table(info_headers, info_rows, col_widths=[3200, 5800], header_bg="2B6CB0"))
+
+    # 2. Synthèse exécutive & Faits marquants
+    body_elements.append(_heading("2. Synthèse exécutive & Réalisations majeures", level=2))
+    body_elements.append(_info_card(
+        "Synthèse générale du département",
+        report.narrative_summary or "Aucune synthèse générale rédigée pour ce mois.",
+    ))
+    body_elements.append(_info_card(
+        "Faits marquants et réalisations clés",
+        report.key_achievements or "Aucun fait marquant renseigné.",
+    ))
+
+    # 3. Indicateurs clés départementaux (KPIs consolidés)
+    body_elements.append(_heading("3. Indicateurs clés de performance du département", level=2))
+    stat_headers = ["Indicateur départemental", "Valeur"]
+    stat_rows = [
+        ["Total collaborateurs actifs", str(len(members_summary))],
+        ["Nombre d'équipes opérationnelles", str(len(teams_summary))],
+        ["Volume total des tâches traitées", str(tasks_stats.get("total", 0))],
+        ["Tâches terminées avec succès", str(tasks_stats.get("completed", 0))],
+        ["Tâches actuellement en cours", str(tasks_stats.get("in_progress", 0))],
+        ["Tâches en retard d'échéance", str(tasks_stats.get("late", 0))],
+        ["Taux d'avancement moyen du département", f"{tasks_stats.get('avg_progress', 0)} %"],
+        ["Activités imprévues prises en charge", str(len(unexpected))],
+        ["Rapports hebdomadaires validés", f"{reports_stats.get('valides', 0)} / {reports_stats.get('total', 0)}"],
+    ]
+    body_elements.append(_table(stat_headers, stat_rows, col_widths=[5200, 3800], header_bg="1B365D"))
+
+    # 4. Bilan opérationnel par équipe
+    body_elements.append(_heading("4. Bilan opérationnel et avancement par équipe", level=2))
+    if teams_summary:
+        team_headers = ["Équipe", "Membres", "Tâches", "Terminées", "En retard", "Avancement", "Imprévues"]
+        team_rows = []
+        for ts in teams_summary:
+            team_rows.append([
+                ts["team"].name,
+                str(ts["members_count"]),
+                str(ts["tasks_total"]),
+                str(ts["tasks_completed"]),
+                str(ts["tasks_late"]),
+                f"{ts['avg_progress']} %",
+                str(ts["unexpected_count"]),
+            ])
+        body_elements.append(_table(team_headers, team_rows, col_widths=[2400, 1000, 1100, 1100, 1100, 1200, 1100], header_bg="2C5282"))
+    else:
+        body_elements.append(_p("Aucune équipe enregistrée.", italic=True, color="718096"))
+
+    # 5. Tâches majeures et projets du mois
+    body_elements.append(_heading("5. Tâches majeures et projets structurants", level=2))
+    if tasks:
+        # Trier par priorité / avancement et limiter aux 25 principales
+        sorted_tasks = sorted(tasks, key=lambda t: (t.progress, t.due_date or date.min), reverse=True)[:25]
+        task_headers = ["N°", "Tâche", "Équipe", "Responsable", "Échéance", "Statut", "Progression"]
+        task_rows = []
+        for idx, t in enumerate(sorted_tasks, start=1):
+            team_name = t.team.name if t.team else "-"
+            resp_name = t.responsible.full_name if t.responsible else "-"
+            task_rows.append([
+                str(idx),
+                t.title,
+                team_name,
+                resp_name,
+                _fmt_date(t.due_date),
+                t.status.value.replace("_", " ").upper(),
+                f"{int(t.progress)} %",
+            ])
+        body_elements.append(_table(task_headers, task_rows, col_widths=[500, 2600, 1500, 1500, 1100, 1000, 800], header_bg="1B365D"))
+    else:
+        body_elements.append(_p("Aucune tâche recensée sur la période mensuelle.", italic=True, color="718096"))
+
+    # 6. Activités imprévues du mois
+    body_elements.append(_heading("6. Activités imprévues et urgences traitées", level=2))
+    if unexpected:
+        unexp_headers = ["N°", "Date", "Titre", "Collaborateur", "Demandeur", "Priorité", "Résultat"]
+        unexp_rows = []
+        for idx, act in enumerate(unexpected[:20], start=1):
+            unexp_rows.append([
+                str(idx),
+                _fmt_date(act.activity_date),
+                act.title,
+                act.user.full_name,
+                act.requester or "-",
+                act.priority.value.upper(),
+                act.result or "-",
+            ])
+        body_elements.append(_table(unexp_headers, unexp_rows, col_widths=[500, 1100, 2200, 1600, 1300, 1000, 1300], header_bg="4A5568"))
+    else:
+        body_elements.append(_p("Aucune activité imprévue déclarée au cours de ce mois.", italic=True, color="718096"))
+
+    # 7. Difficultés récurrentes et solutions
+    body_elements.append(_heading("7. Analyse des difficultés et solutions apportées", level=2))
+    body_elements.append(_info_card(
+        "Difficultés consolidées (synthèse d'encadrement)",
+        report.difficulties_summary or "Aucune difficulté récurrente majeure identifiée.",
+    ))
+    if collected_difficulties:
+        diff_text = "\n".join(f"• [{d['user']} - {d['period']}] : {d['text']}" for d in collected_difficulties[:6])
+        body_elements.append(_info_card("Extraits des difficultés signalées par les équipes", diff_text))
+    if collected_solutions:
+        sol_text = "\n".join(f"• [{s['user']} - {s['period']}] : {s['text']}" for s in collected_solutions[:6])
+        body_elements.append(_info_card("Solutions et initiatives mises en œuvre", sol_text))
+
+    # 8. Perspectives, plan d'action & Recommandations
+    body_elements.append(_heading("8. Plan d'action, perspectives et recommandations", level=2))
+    body_elements.append(_info_card(
+        "Plan d'action pour le mois suivant",
+        report.action_plan or "Aucun plan d'action formalisé.",
+    ))
+    body_elements.append(_info_card(
+        "Observations et recommandations de la Direction du Service",
+        report.observations or "Aucune observation particulière.",
+    ))
+
+    # 9. Visas et Signatures officielles (3 colonnes)
+    body_elements.append(_heading("9. Visas hiérarchiques et approbation", level=2))
+    sig_headers = ["Le Chef de Service", "La Direction Financière", "La Direction Générale"]
+    status_str = f"Finalisé le {_fmt_date(report.finalized_at)}" if report.finalized_at else "Projet en cours"
+    sig_rows = [
+        [
+            f"Chef de Service Comptabilité & Finance\n\nStatut : {status_str}\n\nDate : ....................\nSignature : ....................",
+            "Direction Financière\n\nVisa & Mention :\n\n........................................\n\nDate : ....................\nSignature : ....................",
+            "Direction Générale\n\nApprobation :\n\n........................................\n\nDate : ....................\nSignature : ....................",
+        ]
+    ]
+    body_elements.append(_table(sig_headers, sig_rows, col_widths=[3000, 3000, 3000], header_bg="1B365D"))
+
+    return _build_docx_buffer(body_elements)
+

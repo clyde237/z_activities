@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Ajuster le rapport mensuel - {{ report.month_name }} {{ report.year }}{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- En-tête -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">
+        Ajustement du rapport mensuel — {{ report.month_name }} {{ report.year }}
+      </h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Rédigez les synthèses de direction, faits marquants et orientations pour le département (RB-027).
+      </p>
+    </div>
+    <a href="{{ url_for('monthly_reports.detail_monthly_report', id=report.id) }}"
+       class="text-xs text-slate-600 hover:text-slate-900 border px-3 py-1.5 rounded-lg hover:bg-slate-50">
+      &larr; Annuler et retourner aux détails
+    </a>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Formulaire d'édition -->
+    <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow border border-slate-200">
+      <form method="post" action="{{ url_for('monthly_reports.save_monthly_report', id=report.id) }}" class="space-y-5 text-xs">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- 1. Synthèse générale -->
+        <div>
+          <label for="narrative_summary" class="block font-bold text-slate-800 text-sm mb-1">
+            1. Synthèse générale du département
+          </label>
+          <p class="text-slate-500 text-[11px] mb-2">
+            Vue d'ensemble de l'activité du département Comptabilité & Finance sur le mois écoulé.
+          </p>
+          <textarea id="narrative_summary" name="narrative_summary" rows="4"
+                    class="w-full rounded-lg border border-slate-300 p-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Ex : Le mois de {{ report.month_name }} a été marqué par une forte mobilisation des équipes lors de la clôture périodique et le respect des échéances fiscales...">{{ report.narrative_summary or '' }}</textarea>
+        </div>
+
+        <!-- 2. Faits marquants -->
+        <div>
+          <label for="key_achievements" class="block font-bold text-slate-800 text-sm mb-1">
+            2. Faits marquants & Réalisations majeures
+          </label>
+          <p class="text-slate-500 text-[11px] mb-2">
+            Projets structurants aboutis, améliorations de processus, résultats comptables ou financiers clés.
+          </p>
+          <textarea id="key_achievements" name="key_achievements" rows="4"
+                    class="w-full rounded-lg border border-slate-300 p-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Ex : • Finalisation du rapprochement bancaire avec zéro suspens non justifié&#10;• Inventaire physique des stocks du magasin conforme à 99,5%...">{{ report.key_achievements or '' }}</textarea>
+        </div>
+
+        <!-- 3. Difficultés consolidées -->
+        <div>
+          <label for="difficulties_summary" class="block font-bold text-slate-800 text-sm mb-1">
+            3. Difficultés récurrentes et consolidées
+          </label>
+          <p class="text-slate-500 text-[11px] mb-2">
+            Goulots d'étranglement majeurs, retards observés ou contraintes matérielles/organisationnelles.
+          </p>
+          <textarea id="difficulties_summary" name="difficulties_summary" rows="3"
+                    class="w-full rounded-lg border border-slate-300 p-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Ex : Retards dans la transmission des factures fournisseurs par certains services opérationnels...">{{ report.difficulties_summary or '' }}</textarea>
+        </div>
+
+        <!-- 4. Plan d'action -->
+        <div>
+          <label for="action_plan" class="block font-bold text-slate-800 text-sm mb-1">
+            4. Perspectives & Plan d'action pour le mois prochain
+          </label>
+          <p class="text-slate-500 text-[11px] mb-2">
+            Objectifs prioritaires et mesures correctives planifiées pour le mois suivant.
+          </p>
+          <textarea id="action_plan" name="action_plan" rows="3"
+                    class="w-full rounded-lg border border-slate-300 p-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Ex : • Déploiement de la nouvelle procédure de bon de commande&#10;• Formation d'appoint sur le module de gestion des immobilisations...">{{ report.action_plan or '' }}</textarea>
+        </div>
+
+        <!-- 5. Observations et recommandations -->
+        <div>
+          <label for="observations" class="block font-bold text-slate-800 text-sm mb-1">
+            5. Recommandations & Observations de la Direction du Service
+          </label>
+          <p class="text-slate-500 text-[11px] mb-2">
+            Recommandations à l'attention de la Direction Financière et de la Direction Générale.
+          </p>
+          <textarea id="observations" name="observations" rows="3"
+                    class="w-full rounded-lg border border-slate-300 p-3 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="Ex : Il est recommandé de valider le budget informatique pour l'automatisation des écritures bancaires...">{{ report.observations or '' }}</textarea>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+          <a href="{{ url_for('monthly_reports.detail_monthly_report', id=report.id) }}"
+             class="text-xs text-slate-500 hover:text-slate-800">
+            Annuler les modifications
+          </a>
+          <button type="submit"
+                  class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg shadow-sm">
+            Enregistrer les ajustements
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Volet d'aide à la rédaction (Rappels de données consolidées) -->
+    <div class="space-y-4">
+      <div class="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-3">
+        <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wide border-b pb-2">
+          📊 Données consolidées du mois
+        </h3>
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Tâches actives :</span>
+            <span class="font-semibold text-slate-800">{{ data.tasks_stats.total }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Tâches terminées :</span>
+            <span class="font-bold text-emerald-600">{{ data.tasks_stats.completed }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Tâches en retard :</span>
+            <span class="font-bold text-rose-600">{{ data.tasks_stats.late }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Avancement moyen :</span>
+            <span class="font-bold text-blue-600">{{ data.tasks_stats.avg_progress }}%</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Activités imprévues :</span>
+            <span class="font-bold text-purple-600">{{ data.unexpected_activities|length }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Rapports hebdos liés :</span>
+            <span class="font-semibold text-slate-800">{{ data.weekly_reports|length }}</span>
+          </div>
+        </div>
+      </div>
+
+      {% if data.collected_difficulties %}
+      <div class="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-3">
+        <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wide border-b pb-2">
+          ⚠️ Difficultés signalées dans les hebdos
+        </h3>
+        <div class="space-y-2 max-h-60 overflow-y-auto text-[11px] text-slate-600">
+          {% for d in data.collected_difficulties[:6] %}
+          <div class="p-2 bg-slate-50 rounded border border-slate-100">
+            <span class="font-bold text-slate-800">{{ d.user }}</span> :
+            <p class="text-slate-600 mt-0.5">{{ d.text }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

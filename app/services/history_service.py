@@ -7,6 +7,7 @@ from sqlalchemy import or_
 from ..extensions import db
 from ..models import (
     AuditLog,
+    MonthlyReport,
     Task,
     TaskStatus,
     TaskUpdate,
@@ -228,6 +229,42 @@ def search_history(
                 "progress": None,
                 "snippet": rep.narrative_summary or rep.difficulties or "Rapport d'activités.",
                 "url": _safe_url_for("reports.detail_report", id=rep.id),
+            })
+
+    # 5. Recherche dans les Rapports mensuels départementaux
+    if not entity_type or entity_type in ("all", "report", "monthly_report"):
+        query = db.session.query(MonthlyReport)
+        if term:
+            query = query.filter(
+                or_(
+                    MonthlyReport.narrative_summary.ilike(term),
+                    MonthlyReport.key_achievements.ilike(term),
+                    MonthlyReport.difficulties_summary.ilike(term),
+                    MonthlyReport.action_plan.ilike(term),
+                    MonthlyReport.observations.ilike(term),
+                )
+            )
+
+        for m_rep in query.limit(50).all():
+            m_date = date(m_rep.year, m_rep.month, 1)
+            if start_date and m_date < start_date:
+                continue
+            if end_date and m_date > end_date:
+                continue
+
+            results.append({
+                "type": "monthly_report",
+                "type_label": "Rapport mensuel",
+                "badge_color": "indigo",
+                "id": m_rep.id,
+                "title": f"Rapport mensuel - {m_rep.month_name} {m_rep.year}",
+                "date": m_date,
+                "user": m_rep.created_by or current_user,
+                "team": "Département Comptabilité & Finance",
+                "status": m_rep.status.value.upper(),
+                "progress": None,
+                "snippet": m_rep.narrative_summary or m_rep.key_achievements or "Rapport mensuel départemental.",
+                "url": _safe_url_for("monthly_reports.detail_monthly_report", id=m_rep.id),
             })
 
     # Tri par date décroissante

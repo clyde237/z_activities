@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- En-tête & Barre d'actions -->
+  <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl font-bold text-slate-900">
+            {{ report.month_name }} {{ report.year }}
+          </h1>
+          {% if report.status.value == 'finalise' %}
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+            ✓ FINALISÉ
+          </span>
+          {% else %}
+          <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+            📝 BROUILLON EN AJUSTEMENT
+          </span>
+          {% endif %}
+        </div>
+        <p class="text-xs text-slate-500 mt-1">
+          Rapport mensuel d'activités départemental &bull; Période du {{ data.period_start.strftime('%d/%m/%Y') }} au {{ data.period_end.strftime('%d/%m/%Y') }}
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="{{ url_for('monthly_reports.list_monthly_reports') }}"
+           class="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border rounded-lg hover:bg-slate-50">
+          &larr; Tous les rapports
+        </a>
+
+        {% if current_user.is_chef_service() %}
+          {% if report.status.value == 'brouillon' %}
+          <a href="{{ url_for('monthly_reports.edit_monthly_report', id=report.id) }}"
+             class="px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200">
+            ✏️ Ajuster le rapport
+          </a>
+          <form method="post" action="{{ url_for('monthly_reports.finalize_report_action', id=report.id) }}"
+                onsubmit="return confirm('Êtes-vous sûr de vouloir finaliser officiellement ce rapport mensuel ?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit"
+                    class="px-3 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-sm">
+              ✓ Finaliser le rapport
+            </button>
+          </form>
+          {% else %}
+          <form method="post" action="{{ url_for('monthly_reports.reopen_report_action', id=report.id) }}"
+                onsubmit="return confirm('Voulez-vous réouvrir ce rapport mensuel en brouillon pour apporter des modifications ?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit"
+                    class="px-3 py-1.5 text-xs font-medium text-amber-800 bg-amber-50 hover:bg-amber-100 rounded-lg border border-amber-200">
+              🔄 Réouvrir en brouillon
+            </button>
+          </form>
+          {% endif %}
+        {% endif %}
+
+        <a href="{{ url_for('monthly_reports.export_docx', id=report.id) }}"
+           class="px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm flex items-center gap-1.5">
+          <span>📄</span> Exporter Word (.docx)
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Indicateurs Clés Départementaux du Mois (KPIs) -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-slate-900">
+      <p class="text-[11px] uppercase font-semibold text-slate-400">Total tâches</p>
+      <p class="text-2xl font-bold text-slate-900 mt-1">{{ data.tasks_stats.total }}</p>
+      <span class="text-[10px] text-slate-500">actives dans le mois</span>
+    </div>
+
+    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-emerald-500">
+      <p class="text-[11px] uppercase font-semibold text-slate-400">Terminées</p>
+      <p class="text-2xl font-bold text-emerald-600 mt-1">{{ data.tasks_stats.completed }}</p>
+      <span class="text-[10px] text-emerald-600 font-medium">réalisées avec succès</span>
+    </div>
+
+    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-blue-500">
+      <p class="text-[11px] uppercase font-semibold text-slate-400">En cours</p>
+      <p class="text-2xl font-bold text-blue-600 mt-1">{{ data.tasks_stats.in_progress }}</p>
+      <span class="text-[10px] text-slate-500">en traitement</span>
+    </div>
+
+    <div class="bg-white p-4 rounded-xl shadow border-l-4 {{ 'border-rose-600' if data.tasks_stats.late > 0 else 'border-slate-300' }}">
+      <p class="text-[11px] uppercase font-semibold text-slate-400">En retard</p>
+      <p class="text-2xl font-bold {{ 'text-rose-600' if data.tasks_stats.late > 0 else 'text-slate-700' }} mt-1">
+        {{ data.tasks_stats.late }}
+      </p>
+      <span class="text-[10px] {{ 'text-rose-600 font-semibold' if data.tasks_stats.late > 0 else 'text-slate-400' }}">échéance dépassée</span>
+    </div>
+
+    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-indigo-500">
+      <p class="text-[11px] uppercase font-semibold text-slate-400">Avancement moyen</p>
+      <p class="text-2xl font-bold text-indigo-600 mt-1">{{ data.tasks_stats.avg_progress }} %</p>
+      <span class="text-[10px] text-indigo-600 font-medium">global département</span>
+    </div>
+
+    <div class="bg-white p-4 rounded-xl shadow border-l-4 border-purple-500">
+      <p class="text-[11px] uppercase font-semibold text-slate-400">Activités imprévues</p>
+      <p class="text-2xl font-bold text-purple-600 mt-1">{{ data.unexpected_activities|length }}</p>
+      <span class="text-[10px] text-slate-500">prises en charge</span>
+    </div>
+  </div>
+
+  <!-- Synthèse Exécutive & Faits marquants -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-3">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">
+          1. Synthèse générale du département
+        </h2>
+        {% if current_user.is_chef_service() and report.status.value == 'brouillon' %}
+        <a href="{{ url_for('monthly_reports.edit_monthly_report', id=report.id) }}" class="text-[11px] text-blue-600 hover:underline">
+          Modifier
+        </a>
+        {% endif %}
+      </div>
+      {% if report.narrative_summary %}
+      <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{{ report.narrative_summary }}</p>
+      {% else %}
+      <p class="text-xs text-slate-400 italic">Aucune synthèse générale rédigée pour ce mois. Cliquez sur « Ajuster » pour renseigner la synthèse de direction.</p>
+      {% endif %}
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-3">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">
+          2. Faits marquants & Réalisations majeures
+        </h2>
+        {% if current_user.is_chef_service() and report.status.value == 'brouillon' %}
+        <a href="{{ url_for('monthly_reports.edit_monthly_report', id=report.id) }}" class="text-[11px] text-blue-600 hover:underline">
+          Modifier
+        </a>
+        {% endif %}
+      </div>
+      {% if report.key_achievements %}
+      <p class="text-xs text-slate-700 leading-relaxed whitespace-pre-line">{{ report.key_achievements }}</p>
+      {% else %}
+      <p class="text-xs text-slate-400 italic">Aucun fait marquant formalisé pour ce mois.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Performance et Bilan par Équipe -->
+  <div class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
+        3. Bilan opérationnel et performance par équipe
+      </h2>
+      <span class="text-xs text-slate-500">{{ data.teams_summary|length }} équipes</span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-600">
+        <thead class="bg-slate-50 text-[11px] font-semibold text-slate-700 uppercase tracking-wider border-b border-slate-200">
+          <tr>
+            <th class="px-4 py-3">Équipe</th>
+            <th class="px-4 py-3 text-center">Membres</th>
+            <th class="px-4 py-3 text-center">Tâches</th>
+            <th class="px-4 py-3 text-center text-emerald-700">Terminées</th>
+            <th class="px-4 py-3 text-center text-blue-700">En cours</th>
+            <th class="px-4 py-3 text-center text-rose-700">En retard</th>
+            <th class="px-4 py-3 w-40">Avancement moyen</th>
+            <th class="px-4 py-3 text-center">Imprévues</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for ts in data.teams_summary %}
+          <tr class="hover:bg-slate-50 transition">
+            <td class="px-4 py-3 font-semibold text-slate-900">
+              {{ ts.team.name }}
+            </td>
+            <td class="px-4 py-3 text-center font-medium">{{ ts.members_count }}</td>
+            <td class="px-4 py-3 text-center font-semibold text-slate-800">{{ ts.tasks_total }}</td>
+            <td class="px-4 py-3 text-center font-bold text-emerald-600">{{ ts.tasks_completed }}</td>
+            <td class="px-4 py-3 text-center font-bold text-blue-600">{{ ts.tasks_in_progress }}</td>
+            <td class="px-4 py-3 text-center font-bold {{ 'text-rose-600' if ts.tasks_late > 0 else 'text-slate-400' }}">
+              {{ ts.tasks_late }}
+            </td>
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2">
+                <div class="w-full bg-slate-100 rounded-full h-2">
+                  <div class="bg-blue-600 h-2 rounded-full" style="width: {{ ts.avg_progress }}%"></div>
+                </div>
+                <span class="text-xs font-bold text-slate-700 w-10 text-right">{{ ts.avg_progress }}%</span>
+              </div>
+            </td>
+            <td class="px-4 py-3 text-center">
+              {% if ts.unexpected_count > 0 %}
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-800">
+                {{ ts.unexpected_count }}
+              </span>
+              {% else %}
+              <span class="text-slate-400">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Difficultés, Solutions & Plan d'Action -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-4">
+      <div class="border-b border-slate-100 pb-2">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">
+          4. Analyse des difficultés & Solutions
+        </h2>
+      </div>
+
+      <div class="space-y-2">
+        <h3 class="text-xs font-bold text-slate-700">Synthèse consolidée d'encadrement :</h3>
+        {% if report.difficulties_summary %}
+        <p class="text-xs text-slate-700 whitespace-pre-line bg-slate-50 p-3 rounded-lg border border-slate-200">{{ report.difficulties_summary }}</p>
+        {% else %}
+        <p class="text-xs text-slate-400 italic">Aucune difficulté consolidée formalisée.</p>
+        {% endif %}
+      </div>
+
+      {% if data.collected_difficulties %}
+      <div class="space-y-2 pt-2 border-t border-slate-100">
+        <h3 class="text-xs font-semibold text-slate-600">Points remontés par les collaborateurs dans les hebdos :</h3>
+        <ul class="space-y-1.5 text-xs text-slate-600 max-h-40 overflow-y-auto">
+          {% for d in data.collected_difficulties[:5] %}
+          <li class="bg-amber-50/50 p-2 rounded border border-amber-100">
+            <span class="font-semibold text-slate-800">{{ d.user }}</span> <span class="text-[10px] text-slate-400">({{ d.period }})</span> :
+            <p class="mt-0.5 text-slate-700">{{ d.text }}</p>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="bg-white p-5 rounded-xl shadow border border-slate-200 space-y-4">
+      <div class="border-b border-slate-100 pb-2">
+        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide">
+          5. Perspectives, plan d'action & Recommandations
+        </h2>
+      </div>
+
+      <div class="space-y-2">
+        <h3 class="text-xs font-bold text-slate-700">Plan d'action pour le mois prochain :</h3>
+        {% if report.action_plan %}
+        <p class="text-xs text-slate-700 whitespace-pre-line bg-blue-50/40 p-3 rounded-lg border border-blue-100">{{ report.action_plan }}</p>
+        {% else %}
+        <p class="text-xs text-slate-400 italic">Aucun plan d'action renseigné.</p>
+        {% endif %}
+      </div>
+
+      <div class="space-y-2 pt-2 border-t border-slate-100">
+        <h3 class="text-xs font-bold text-slate-700">Observations et recommandations de la Direction du Service :</h3>
+        {% if report.observations %}
+        <p class="text-xs text-slate-700 whitespace-pre-line bg-slate-50 p-3 rounded-lg border border-slate-200">{{ report.observations }}</p>
+        {% else %}
+        <p class="text-xs text-slate-400 italic">Aucune observation particulière.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Signatures et Visas Hiérarchiques -->
+  <div class="bg-white p-6 rounded-xl shadow border border-slate-200">
+    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-3 mb-4">
+      6. Visas et approbations officielles
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs text-slate-700">
+      <div class="border border-slate-200 p-4 rounded-xl space-y-2 bg-slate-50/50">
+        <h3 class="font-bold text-slate-900 border-b pb-1">Le Chef de Service</h3>
+        <p><span class="font-medium text-slate-500">Statut :</span> {{ report.status.value.upper() }}</p>
+        <p><span class="font-medium text-slate-500">Date :</span> {{ report.finalized_at.strftime('%d/%m/%Y') if report.finalized_at else 'En cours' }}</p>
+        <p><span class="font-medium text-slate-500">Visa :</span> {{ report.finalized_by.full_name if report.finalized_by else 'Chef de Service' }}</p>
+      </div>
+
+      <div class="border border-slate-200 p-4 rounded-xl space-y-2 bg-slate-50/50">
+        <h3 class="font-bold text-slate-900 border-b pb-1">La Direction Financière</h3>
+        <p><span class="font-medium text-slate-500">Visa & Avis :</span> ................................</p>
+        <p><span class="font-medium text-slate-500">Date :</span> ................................</p>
+        <p><span class="font-medium text-slate-500">Signature :</span> ................................</p>
+      </div>
+
+      <div class="border border-slate-200 p-4 rounded-xl space-y-2 bg-slate-50/50">
+        <h3 class="font-bold text-slate-900 border-b pb-1">La Direction Générale</h3>
+        <p><span class="font-medium text-slate-500">Approbation :</span> ................................</p>
+        <p><span class="font-medium text-slate-500">Date :</span> ................................</p>
+        <p><span class="font-medium text-slate-500">Signature :</span> ................................</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
