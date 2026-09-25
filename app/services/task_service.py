@@ -166,6 +166,10 @@ def create_task(user: User, data: dict[str, Any]) -> Task:
 
     log_action("create", "Task", task.id, new_value=f"title={task.title} team_id={task.team_id}")
     db.session.commit()
+
+    from .notification_service import notify_task_assigned
+    notify_task_assigned(task)
+
     return task
 
 
@@ -189,6 +193,9 @@ def update_task(task: Task, user: User, data: dict[str, Any]) -> Task:
         new_value=f"status={task.status.value} resp={task.responsible_id}",
     )
     db.session.commit()
+    if task.responsible_id and task.responsible_id != old_responsible_id:
+        from .notification_service import notify_task_assigned
+        notify_task_assigned(task)
     return task
 
 

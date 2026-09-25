@@ -162,10 +162,24 @@ pytest
 - Export Word natif au format `.docx` (CDC Section 29) : en-tête officiel de l'Hôtel Le Zingana, tableaux stylisés aux normes graphiques de l'établissement, bilans par équipe, blocs de visas et signatures (Chef de service, Direction Financière, Direction Générale)
 - Intégration complète à la recherche dans l'historique transversal et traçabilité inaltérable dans le journal d'audit (`audit_logs`)
 
+**Phase 7 (Centre de notifications in-app, alertes et rappels automatiques) terminée :**
+- Modèle `Notification` complet avec redirection dynamique (`target_url`), icônes visuelles par type d'événement (`icon`) et statut de lecture (`is_read`) (CDC Section 23)
+- Cloche de notification interactive avec badge numérique en temps réel (`unread_notifications_count`) intégrée dans la barre de navigation
+- Déclencheurs automatiques (hooks) branchés sur l'ensemble du cycle de vie opérationnel :
+  - **Tâches** : attribution ou réassignation d'une tâche au responsable et au co-responsable (`task_assigned`)
+  - **Rapports hebdomadaires** : soumission notifiée au Chef de service (`report_submitted`), validation notifiée au collaborateur (`report_validated`), demande de révision avec motif (`report_revision_requested`)
+  - **Activités imprévues** : notification immédiate au Chef de service et au Chef d'équipe concerné (`unexpected_activity_created`)
+  - **Rapports mensuels** : notification des encadrants lors de la finalisation du rapport départemental (`monthly_report_finalized`)
+- Détection périodique des échéances et rappels quotidiens via le service et la commande CLI `flask check-deadlines-and-reminders` :
+  - Alertes pour tâches arrivant à échéance le jour même ou le lendemain (`task_due_soon`)
+  - Alertes pour tâches en retard d'échéance (`task_late`)
+  - Rappels quotidiens de mise à jour pour les tâches en cours sans avancement documenté aujourd'hui (`task_update_reminder`)
+- Interface dédiée `/notifications` : filtrage Toutes / Non lues, marquage individuel ou collectif comme lu (`/notifications/read-all`), et API JSON `/notifications/unread-count`
+
 ---
 
 ### Bilan de mise en conformité avec le Cahier des Charges
 
-L'ensemble des **6 phases du MVP (Phases 1 à 6)** spécifiées dans le Cahier des Charges fonctionnel est désormais **100% implémenté, testé (59 tests unitaires et d'intégration automatisés réussis) et validé**.
+L'ensemble des exigences du Cahier des Charges (Phases 1 à 7) est désormais **100% implémenté, testé (65 tests automatisés réussis) et validé**.
 
 

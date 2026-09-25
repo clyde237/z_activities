@@ -214,6 +214,10 @@ def submit_weekly_report(report: WeeklyReport, user: User) -> WeeklyReport:
 
     log_action("submit", "WeeklyReport", report.id, new_value="Statut passé à SOUMIS")
     db.session.commit()
+
+    from .notification_service import notify_report_submitted
+    notify_report_submitted(report)
+
     return report
 
 
@@ -239,6 +243,10 @@ def validate_weekly_report(
 
     log_action("validate", "WeeklyReport", report.id, new_value="Statut passé à VALIDE")
     db.session.commit()
+
+    from .notification_service import notify_report_validated
+    notify_report_validated(report)
+
     return report
 
 
@@ -264,6 +272,10 @@ def reject_weekly_report_to_draft(
 
     log_action("reject_to_draft", "WeeklyReport", report.id, new_value="Renvoyé en brouillon pour révision")
     db.session.commit()
+
+    from .notification_service import notify_report_revision_requested
+    notify_report_revision_requested(report, reason)
+
     return report
 
 

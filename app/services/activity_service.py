@@ -91,6 +91,10 @@ def create_unexpected_activity(user: User, data: dict[str, Any]) -> UnexpectedAc
 
     log_action("create", "UnexpectedActivity", activity.id, new_value=activity.title)
     db.session.commit()
+
+    from .notification_service import notify_unexpected_activity_created
+    notify_unexpected_activity_created(activity)
+
     return activity
 
 

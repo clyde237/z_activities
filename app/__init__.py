@@ -42,4 +42,12 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         from flask import render_template
         return render_template("errors/404.html"), 404
 
+    @app.context_processor
+    def inject_notifications_count():
+        from flask_login import current_user
+        from .services.notification_service import get_unread_notifications_count
+        if current_user.is_authenticated:
+            return {"unread_notifications_count": get_unread_notifications_count(current_user)}
+        return {"unread_notifications_count": 0}
+
     return app

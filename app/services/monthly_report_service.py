@@ -307,6 +307,10 @@ def finalize_monthly_report(
         new_value=f"Rapport mensuel finalisé par le chef de service {current_user.full_name}",
     )
     db.session.commit()
+
+    from .notification_service import notify_monthly_report_finalized
+    notify_monthly_report_finalized(monthly_report)
+
     return monthly_report
 
 

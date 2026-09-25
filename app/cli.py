@@ -62,3 +62,13 @@ def register_cli(app: Flask) -> None:
         reports = generate_weekly_reports_for_all(target_date=target_date)
         click.echo(f"Génération terminée : {len(reports)} rapport(s) hebdomadaire(s) généré(s) ou vérifié(s).")
 
+    @app.cli.command("check-deadlines-and-reminders")
+    def check_deadlines_cmd() -> None:
+        """Vérifie les échéances imminentes, les retards et envoie les rappels de mise à jour (CDC Section 23)."""
+        from .services.notification_service import check_deadlines_and_send_reminders
+        counts = check_deadlines_and_send_reminders()
+        click.echo(
+            f"Vérification terminée : {counts['due_soon']} alerte(s) échéance, "
+            f"{counts['late']} alerte(s) retard, {counts['update_reminders']} rappel(s) mise à jour."
+        )
+

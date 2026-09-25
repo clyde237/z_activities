@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Centre de notifications{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <!-- En-tête -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+        <span>🔔</span> Centre de notifications
+      </h1>
+      <p class="text-xs text-slate-500 mt-1">
+        Suivi des événements importants : attributions, échéances, rappels quotidiens et validation des rapports (CDC Section 23).
+      </p>
+    </div>
+
+    {% if unread_count and unread_count > 0 %}
+    <form method="post" action="{{ url_for('notifications.mark_all_read') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit"
+              class="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 rounded-lg border border-slate-200 shadow-sm flex items-center gap-1.5">
+        <span>✓</span> Tout marquer comme lu
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- Barre de filtres (Toutes / Non lues) -->
+  <div class="flex items-center gap-3 border-b border-slate-200 pb-3 text-xs">
+    <a href="{{ url_for('notifications.list_notifications') }}"
+       class="font-semibold pb-1.5 border-b-2 {{ 'border-blue-600 text-blue-600' if not filter_unread else 'border-transparent text-slate-500 hover:text-slate-800' }}">
+      Toutes les notifications
+    </a>
+    <a href="{{ url_for('notifications.list_notifications', unread='1') }}"
+       class="font-semibold pb-1.5 border-b-2 flex items-center gap-1.5 {{ 'border-blue-600 text-blue-600' if filter_unread else 'border-transparent text-slate-500 hover:text-slate-800' }}">
+      <span>Non lues</span>
+      {% if unread_count > 0 %}
+      <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 text-rose-700 font-bold">
+        {{ unread_count }}
+      </span>
+      {% endif %}
+    </a>
+  </div>
+
+  <!-- Liste des notifications -->
+  <div class="bg-white rounded-xl shadow border border-slate-200 overflow-hidden divide-y divide-slate-100">
+    {% for notif in notifications %}
+    <div class="p-4 flex items-start justify-between gap-4 hover:bg-slate-50/80 transition {{ 'bg-blue-50/20' if not notif.is_read else '' }}">
+      <div class="flex items-start gap-3.5">
+        <div class="text-xl p-2 rounded-xl bg-slate-100 shrink-0">
+          {{ notif.icon }}
+        </div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-slate-800">
+              {{ notif.message }}
+            </span>
+            {% if not notif.is_read %}
+            <span class="inline-block w-2 h-2 rounded-full bg-blue-600 shrink-0" title="Non lu"></span>
+            {% endif %}
+          </div>
+          <p class="text-[11px] text-slate-400">
+            {{ notif.created_at.strftime('%d/%m/%Y à %H:%M') }}
+            {% if notif.related_object_type %}
+              &bull; Ressource liée : {{ notif.related_object_type }} #{{ notif.related_object_id }}
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="shrink-0 flex items-center gap-2">
+        {% if not notif.is_read %}
+        <form method="post" action="{{ url_for('notifications.mark_read', id=notif.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="next" value="{{ notif.target_url }}">
+          <button type="submit"
+                  class="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm">
+            Consulter &rarr;
+          </button>
+        </form>
+        {% else %}
+        <a href="{{ notif.target_url }}"
+           class="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200">
+          Voir &rarr;
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="p-12 text-center text-slate-400 text-xs">
+      <div class="text-3xl mb-2">🎉</div>
+      <p class="font-medium text-slate-600 text-sm">Aucune notification pour le moment.</p>
+      <p class="text-[11px] text-slate-400 mt-1">
+        {% if filter_unread %}
+          Vous n'avez aucune notification non lue.
+        {% else %}
+          Toutes vos notifications importantes apparaîtront ici.
+        {% endif %}
+      </p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
