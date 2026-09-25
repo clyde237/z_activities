@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
@@ -30,6 +30,7 @@ def _get_creatable_teams_for_user(user) -> list[Team]:
 @tasks_blueprint.get("")
 @login_required
 def list_tasks():
+    today = date.today()
     team_id = request.args.get("team_id", type=int)
     status_str = request.args.get("status")
     filter_mode = request.args.get("filter", "all")
@@ -52,6 +53,15 @@ def list_tasks():
         only_late=only_late,
     )
 
+    all_visible = get_visible_tasks(user=current_user, team_id=team_id)
+    counts = {
+        "all": len(all_visible),
+        "todo": sum(1 for t in all_visible if t.status == TaskStatus.A_FAIRE),
+        "in_progress": sum(1 for t in all_visible if t.status == TaskStatus.EN_COURS),
+        "completed": sum(1 for t in all_visible if t.status == TaskStatus.TERMINEE),
+        "late": sum(1 for t in all_visible if t.is_late(today)),
+    }
+
     # Équipes accessibles pour le filtre
     if current_user.is_chef_service():
         filter_teams = db.session.query(Team).order_by(Team.name).all()
@@ -65,16 +75,25 @@ def list_tasks():
         )
 
     can_create = can_create_task(current_user)
+    creatable_teams = _get_creatable_teams_for_user(current_user)
+    first_team_id = creatable_teams[0].id if creatable_teams else None
+    assignable_members = get_assignable_members(first_team_id) if first_team_id else []
 
     return render_template(
         "tasks/list.html",
         tasks=tasks,
+        counts=counts,
+        today=today,
         filter_teams=filter_teams,
+        creatable_teams=creatable_teams,
+        assignable_members=assignable_members,
         current_team_id=team_id,
         current_status=status_str,
         current_filter=filter_mode,
         can_create=can_create,
         statuses=TaskStatus,
+        priorities=TaskPriority,
+        task_types=TaskType,
     )
 
 

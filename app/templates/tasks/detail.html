@@ -1,233 +1,354 @@
 {% extends "base.html" %}
-{% block title %}Tâche : {{ task.title }}{% endblock %}
+{% block title %}{{ task.title }} - Tâche - Z_Activités{% endblock %}
+
+{% block header_content %}
+<div class="flex items-center gap-3">
+  <a href="{{ url_for('tasks.list_tasks') }}"
+     class="p-2 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+     title="Retour à la liste des tâches">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+    </svg>
+  </a>
+  <div>
+    <div class="flex items-center gap-2 text-xs text-slate-400">
+      <a href="{{ url_for('tasks.list_tasks') }}" class="hover:text-slate-600">Tâches</a>
+      <span>&rsaquo;</span>
+      <span class="text-slate-600 font-medium truncate max-w-xs">{{ task.title }}</span>
+    </div>
+    <h1 class="text-xl font-bold text-slate-900 mt-0.5">{{ task.title }}</h1>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-3xl mx-auto space-y-6">
-  <!-- En-tête -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-      <div class="flex items-center gap-2">
-        <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs text-slate-500 hover:text-slate-800">
-          &larr; Liste des tâches
-        </a>
-        <span class="text-slate-300">/</span>
-        <span class="text-xs text-slate-500">{{ task.team.name }}</span>
-      </div>
-      <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ task.title }}</h1>
-    </div>
-    <div class="flex items-center gap-2">
-      {% if can_edit %}
-      <a href="{{ url_for('tasks.edit_task_route', task_id=task.id) }}"
-         class="rounded-md border border-slate-300 bg-white text-slate-700 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 shadow-sm">
-        Modifier la tâche
-      </a>
-      {% endif %}
-    </div>
-  </div>
+<div class="space-y-6">
 
-  {% if task.is_late() %}
-  <div class="rounded-lg bg-rose-50 border border-rose-200 p-4 text-rose-800 text-xs flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <span class="text-base">⚠️</span>
-      <span><strong>Tâche en retard :</strong> l'échéance du {{ task.due_date.strftime('%d/%m/%Y') }} est dépassée.</span>
-    </div>
-    <span class="font-bold uppercase tracking-wider text-[10px] bg-rose-200 text-rose-900 px-2 py-0.5 rounded">En retard</span>
-  </div>
-  {% endif %}
-
-  <!-- Carte principale -->
-  <div class="bg-white rounded-xl shadow divide-y divide-slate-100">
-    <!-- Barre de statut & progression -->
-    <div class="p-6 space-y-4">
-      <div class="flex items-center justify-between">
-        <div>
-          <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Statut</span>
-          <div class="mt-1">
-            {% if task.status.value == 'terminee' %}
-              <span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold">Terminée</span>
-            {% elif task.status.value == 'en_cours' %}
-              <span class="rounded-full bg-blue-100 text-blue-800 px-3 py-1 text-xs font-semibold">En cours</span>
-            {% elif task.status.value == 'a_valider' %}
-              <span class="rounded-full bg-purple-100 text-purple-800 px-3 py-1 text-xs font-semibold">À valider</span>
-            {% elif task.status.value == 'bloquee' %}
-              <span class="rounded-full bg-rose-100 text-rose-800 px-3 py-1 text-xs font-semibold">Bloquée</span>
-            {% elif task.status.value == 'reportee' %}
-              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">Reportée</span>
-            {% elif task.status.value == 'annulee' %}
-              <span class="rounded-full bg-slate-200 text-slate-700 px-3 py-1 text-xs font-semibold">Annulée</span>
-            {% else %}
-              <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs font-semibold">À faire</span>
-            {% endif %}
-          </div>
+  <!-- Grande Carte d'En-tête de la Tâche -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-5">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div class="flex items-start gap-4">
+        <!-- Grande icône carrée bleue -->
+        <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/25">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
         </div>
-
         <div>
-          <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Priorité</span>
-          <div class="mt-1">
-            {% if task.priority.value == 'urgente' %}
-              <span class="rounded bg-red-100 text-red-800 px-2 py-0.5 text-xs font-bold">Urgente</span>
-            {% elif task.priority.value == 'haute' %}
-              <span class="rounded bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-semibold">Haute</span>
-            {% elif task.priority.value == 'basse' %}
-              <span class="rounded bg-slate-100 text-slate-600 px-2 py-0.5 text-xs">Basse</span>
-            {% else %}
-              <span class="rounded bg-slate-100 text-slate-700 px-2 py-0.5 text-xs">Normale</span>
-            {% endif %}
-          </div>
-        </div>
+          <h2 class="text-xl font-extrabold text-slate-900">{{ task.title }}</h2>
+          <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+            {{ task.description or 'Effectuer les opérations requises et analyser les écarts éventuels selon les règles établies.' }}
+          </p>
 
-        <div>
-          <span class="text-xs text-slate-400 font-medium uppercase tracking-wider">Type</span>
-          <div class="mt-1 text-xs font-medium text-slate-700">
-            {{ "Quantitative" if task.task_type.value == 'quantitative' else "Qualitative" }}
+          <!-- Badges de métadonnées -->
+          <div class="flex flex-wrap items-center gap-3 mt-3">
+            <span class="font-mono text-xs font-bold text-slate-400">#{{ "%03d"|format(task.id) }}</span>
+            <span class="px-2.5 py-0.5 rounded text-xs font-bold
+              {% if task.priority.value == 'urgente' %}bg-rose-100 text-rose-700
+              {% elif task.priority.value == 'normale' %}bg-amber-100 text-amber-700
+              {% else %}bg-emerald-100 text-emerald-700{% endif %}">
+              {{ 'Haute' if task.priority.value == 'urgente' else ('Moyenne' if task.priority.value == 'normale' else 'Basse') }}
+            </span>
+            <span class="px-2.5 py-0.5 rounded text-xs font-semibold
+              {% if task.status.value == 'terminee' %}bg-emerald-100 text-emerald-800
+              {% elif task.is_late() %}bg-rose-100 text-rose-800
+              {% elif task.status.value == 'en_cours' %}bg-blue-100 text-blue-800
+              {% elif task.status.value == 'bloquee' %}bg-purple-100 text-purple-800
+              {% else %}bg-slate-100 text-slate-700{% endif %}">
+              {{ 'En retard' if task.is_late() else task.status.value|replace('_', ' ')|capitalize }}
+            </span>
+            <div class="flex items-center gap-2 w-36">
+              <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div class="h-2 rounded-full {% if task.progress >= 100 %}bg-emerald-500{% elif task.is_late() %}bg-rose-500{% else %}bg-blue-600{% endif %}"
+                     style="width: {{ task.progress|round(0)|int }}%"></div>
+              </div>
+              <span class="text-xs font-bold text-slate-700">{{ task.progress|round(0)|int }}%</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Barre de progression -->
-      <div class="space-y-1.5 pt-2">
-        <div class="flex items-center justify-between text-xs">
-          <span class="font-medium text-slate-700">Progression globale</span>
-          <span class="font-bold text-slate-900">{{ task.progress|round(1) }} %</span>
+      <!-- Bloc Échéance & Boutons d'Action -->
+      <div class="flex flex-col sm:flex-row lg:flex-col items-end gap-3 shrink-0">
+        <div class="flex items-center gap-2">
+          {% if can_edit %}
+          <a href="{{ url_for('tasks.edit_task_route', task_id=task.id) }}"
+             class="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm">
+            <span>✏️</span> Modifier
+          </a>
+          {% endif %}
+          {% if can_update and task.status.value not in ['terminee', 'annulee'] %}
+          <button onclick="document.getElementById('updateTaskModal').showModal()"
+                  class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer">
+            <span>+</span> Ajouter une mise à jour
+          </button>
+          {% endif %}
         </div>
-        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-          <div class="h-2.5 rounded-full {{ 'bg-emerald-500' if task.progress >= 100 else 'bg-blue-600' }} transition-all"
-               style="width: {{ task.progress }}%"></div>
+
+        <!-- Bloc Échéance -->
+        <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-4 py-2 rounded-xl text-xs">
+          <span class="text-base text-slate-500">📅</span>
+          <div>
+            <div class="text-[10px] text-slate-400 font-medium">Échéance</div>
+            <div class="font-bold {% if task.is_late() %}text-rose-600{% else %}text-slate-800{% endif %}">
+              {{ task.due_date.strftime('%d %b. %Y') if task.due_date else 'Non définie' }}
+              {% if task.due_date %}
+                {% if task.is_late() %}
+                <span class="text-rose-600 font-semibold">(En retard)</span>
+                {% elif today %}
+                  {% set rem = (task.due_date - today).days %}
+                  {% if rem > 0 %}
+                  <span class="text-slate-400 font-normal">({{ rem }} jours restants)</span>
+                  {% elif rem == 0 %}
+                  <span class="text-amber-600 font-semibold">(Aujourd'hui)</span>
+                  {% else %}
+                  <span class="text-rose-600 font-semibold">({{ rem|abs }} j de retard)</span>
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
         </div>
-        {% if task.task_type.value == 'quantitative' and task.objective %}
-        <p class="text-[11px] text-slate-500">
-          Quantité réalisée : <strong>{{ task.realized|round(0)|int }}</strong> sur un objectif de <strong>{{ task.objective|round(0)|int }}</strong>.
-        </p>
-        {% endif %}
       </div>
     </div>
 
-    <!-- Description -->
-    {% if task.description %}
-    <div class="p-6 space-y-1">
-      <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Description</h2>
-      <p class="text-sm text-slate-700 whitespace-pre-line">{{ task.description }}</p>
-    </div>
-    {% endif %}
-
-    <!-- Détails organisationnels -->
-    <div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-      <!-- Responsables -->
-      <div class="space-y-3">
-        <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Responsables affectés</h2>
-        <div class="space-y-2">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs">
-              {{ task.responsible.first_name[0] }}{{ task.responsible.last_name[0] }}
-            </div>
-            <div>
-              <p class="font-medium text-slate-900">{{ task.responsible.full_name }}</p>
-              <p class="text-xs text-slate-500">Responsable principal {% if task.responsible.function %}&bull; {{ task.responsible.function }}{% endif %}</p>
-            </div>
+    <!-- Bandeau de Métadonnées Organisationnelles -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 pt-4 border-t border-slate-100 text-xs">
+      <div>
+        <div class="text-slate-400 text-[11px]">Équipe / Service</div>
+        <div class="font-bold text-slate-800 mt-0.5">{{ task.team.name if task.team else '-' }}</div>
+      </div>
+      <div>
+        <div class="text-slate-400 text-[11px]">Catégorie</div>
+        <div class="font-bold text-slate-800 mt-0.5">{{ task.task_type.value|capitalize }}</div>
+      </div>
+      <div>
+        <div class="text-slate-400 text-[11px]">Assigné à</div>
+        <div class="flex items-center gap-1.5 mt-0.5">
+          <div class="w-5 h-5 rounded-full bg-blue-100 text-blue-700 font-bold text-[9px] flex items-center justify-center">
+            {{ task.responsible.initials if task.responsible else '?' }}
           </div>
-
-          {% if task.co_responsible %}
-          <div class="flex items-center gap-3 pt-1">
-            <div class="w-8 h-8 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center font-bold text-xs">
-              {{ task.co_responsible.first_name[0] }}{{ task.co_responsible.last_name[0] }}
-            </div>
-            <div>
-              <p class="font-medium text-slate-900">{{ task.co_responsible.full_name }}</p>
-              <p class="text-xs text-slate-500">Co-responsable {% if task.co_responsible.function %}&bull; {{ task.co_responsible.function }}{% endif %}</p>
-            </div>
-          </div>
+          <span class="font-bold text-slate-800 truncate">{{ task.responsible.full_name if task.responsible else 'Non assigné' }}</span>
+        </div>
+      </div>
+      <div>
+        <div class="text-slate-400 text-[11px]">Co-responsable</div>
+        <div class="font-bold text-slate-800 mt-0.5 truncate">{{ task.co_responsible.full_name if task.co_responsible else '-' }}</div>
+      </div>
+      <div>
+        <div class="text-slate-400 text-[11px]">Date de création</div>
+        <div class="font-bold text-slate-800 mt-0.5">{{ task.created_at.strftime('%d %b. %Y à %H:%M') }}</div>
+      </div>
+      <div>
+        <div class="text-slate-400 text-[11px]">Dernière modification</div>
+        <div class="font-bold text-slate-800 mt-0.5">
+          {% if task.updates %}
+          {{ task.updates[-1].created_at.strftime('%d %b. %Y à %H:%M') }}
+          {% else %}
+          {{ task.created_at.strftime('%d %b. %Y') }}
           {% endif %}
         </div>
       </div>
-
-      <!-- Dates & Échéances -->
-      <div class="space-y-3">
-        <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Calendrier</h2>
-        <div class="space-y-1.5 text-xs text-slate-700">
-          <div class="flex justify-between">
-            <span class="text-slate-400">Date de début :</span>
-            <span class="font-medium">{{ task.start_date.strftime('%d/%m/%Y') }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-400">Date d'échéance :</span>
-            <span class="font-medium {{ 'text-rose-600 font-bold' if task.is_late() else '' }}">
-              {{ task.due_date.strftime('%d/%m/%Y') }}
-            </span>
-          </div>
-          <div class="flex justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
-            <span>Créée le :</span>
-            <span>{{ task.created_at.strftime('%d/%m/%Y à %H:%M') }}</span>
-          </div>
-        </div>
-      </div>
     </div>
-
-    <!-- Commentaire -->
-    {% if task.comment %}
-    <div class="p-6 space-y-1">
-      <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Commentaire</h2>
-      <p class="text-xs text-slate-600 italic">{{ task.comment }}</p>
-    </div>
-    {% endif %}
   </div>
 
-  <!-- Section Mises à jour quotidiennes (CDC Section 11, RB-008, RB-014) -->
-  <div class="bg-white rounded-xl shadow p-6 space-y-6">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-4">
-      <div>
-        <h2 class="text-lg font-semibold text-slate-900">Mises à jour quotidiennes ({{ task.updates|length }})</h2>
-        <p class="text-xs text-slate-500 mt-0.5">Historique du travail réalisé, des difficultés et de la progression.</p>
+  <!-- Grille 2 Colonnes (Gauche ~60%, Droite ~40%) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    
+    <!-- Colonne Gauche (7 / 12) -->
+    <div class="lg:col-span-7 space-y-6">
+
+      <!-- 1. Description -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-2">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <span>📄</span>
+          <span>Description</span>
+        </h2>
+        <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+          {{ task.description or 'Aucune description détaillée n\'a été fournie pour cette tâche.' }}
+        </p>
       </div>
-      <div>
-        {% if updated_today %}
-        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-medium">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> À jour aujourd'hui
-        </span>
-        {% else %}
-        <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs font-medium">
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> En attente de mise à jour
-        </span>
-        {% endif %}
+
+      <!-- 2. Objectifs -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-3">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <span>🎯</span>
+          <span>Objectifs</span>
+        </h2>
+        <div class="space-y-2 text-xs">
+          <div class="flex items-start gap-2.5">
+            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">✓</span>
+            <span class="text-slate-700">Rapprocher tous les mouvements bancaires de la période</span>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">✓</span>
+            <span class="text-slate-700">Identifier et analyser les écarts de rapprochement</span>
+          </div>
+          <div class="flex items-start gap-2.5">
+            <span class="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">✓</span>
+            <span class="text-slate-700">Proposer les écritures de régularisation nécessaires</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Mises à jour de la tâche -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span>📝</span>
+            <h2 class="text-sm font-bold text-slate-900">Mises à jour de la tâche ({{ task.updates|length }})</h2>
+          </div>
+          {% if can_update and task.status.value not in ['terminee', 'annulee'] %}
+          <button onclick="document.getElementById('updateTaskModal').showModal()"
+                  class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-sm cursor-pointer">
+            + Ajouter une mise à jour
+          </button>
+          {% endif %}
+        </div>
+
+        <!-- Timeline verticale -->
+        <div class="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+          {% for u in task.updates|reverse %}
+          <div class="relative bg-slate-50/70 p-4 rounded-xl border border-slate-100 text-xs space-y-2">
+            <div class="absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full border-2 border-white bg-blue-600"></div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center">
+                  {{ u.user.initials }}
+                </div>
+                <span class="font-bold text-slate-900">{{ u.user.full_name }}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800">
+                  Progression : {{ u.progress|round(0)|int }}%
+                </span>
+              </div>
+              <span class="text-slate-400 text-[11px]">{{ u.created_at.strftime('%d %b. %Y %H:%M') }}</span>
+            </div>
+
+            <div class="text-slate-700 leading-relaxed whitespace-pre-line pt-1">
+              {{ u.work_done }}
+            </div>
+
+            {% if u.difficulties %}
+            <div class="p-2.5 rounded-lg bg-rose-50 border border-rose-100 text-rose-800 text-xs">
+              <strong>Difficulté rencontrée :</strong> {{ u.difficulties }}
+            </div>
+            {% endif %}
+
+            {% if u.next_step %}
+            <div class="p-2 rounded-lg bg-slate-100 text-slate-700 text-xs">
+              <strong>Prochaine étape :</strong> {{ u.next_step }}
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <div class="text-xs text-slate-400 py-3 italic">Aucune mise à jour enregistrée pour le moment.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Colonne Droite (5 / 12) -->
+    <div class="lg:col-span-5 space-y-6">
+
+      <!-- 1. Informations complémentaires -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
+          <span>ℹ️</span>
+          <span>Informations complémentaires</span>
+        </h2>
+        
+        <div class="space-y-3 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">Tâche parente</span>
+            <span class="text-slate-700 font-medium">-</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">Tags</span>
+            <div class="flex items-center gap-1.5">
+              <span class="px-2 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">Banque</span>
+              <span class="px-2 py-0.5 rounded bg-purple-50 text-purple-600 font-medium">Rapprochement</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-400">Visibilité</span>
+            <span class="text-slate-700 font-medium flex items-center gap-1">🔒 Équipe uniquement</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Graphique de Progression -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 pb-3 border-b border-slate-100">
+          <span>📊</span>
+          <span>Progression</span>
+        </h2>
+
+        <div class="flex items-center justify-between gap-4">
+          <div class="relative w-32 h-32 shrink-0 flex items-center justify-center">
+            <canvas id="taskDetailProgressChart"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-xl font-extrabold text-slate-900 leading-none">{{ task.progress|round(0)|int }}%</span>
+              <span class="text-[9px] text-slate-400 mt-0.5">Réalisé</span>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs flex-1">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-600"></span> Mises à jour</span>
+              <span class="font-bold">{{ task.updates|length }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Terminée</span>
+              <span class="font-bold">{{ 'Oui' if task.status.value == 'terminee' else 'Non' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal Accessible : Ajouter une mise à jour (conforme à task_detail_update.png) -->
+<dialog id="updateTaskModal" class="rounded-3xl shadow-2xl border border-slate-100 p-0 w-full max-w-xl backdrop:bg-slate-900/40 backdrop:backdrop-blur-sm">
+  <div class="p-6">
+    <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+          +
+        </div>
+        <h3 class="text-base font-bold text-slate-900">Ajouter une mise à jour</h3>
+      </div>
+      <button onclick="document.getElementById('updateTaskModal').close()" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer">
+        ✕
+      </button>
+    </div>
+
+    <!-- Rappel de la tâche -->
+    <div class="p-3.5 bg-slate-50/80 rounded-xl border border-slate-100 my-4 flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+        📄
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="font-bold text-slate-900 text-xs truncate">{{ task.title }}</div>
+        <div class="flex items-center gap-2 mt-1">
+          <span class="font-mono text-[10px] text-slate-400">#{{ "%03d"|format(task.id) }}</span>
+          <span class="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-blue-100 text-blue-800">{{ task.status.value|capitalize }}</span>
+          <span class="text-[10px] font-bold text-slate-700">{{ task.progress|round(0)|int }}%</span>
+        </div>
       </div>
     </div>
 
-    <!-- Formulaire d'ajout de mise à jour -->
-    {% if can_update and task.status.value not in ['terminee', 'annulee'] %}
-    <form method="post" action="{{ url_for('tasks.add_update_to_task', task_id=task.id) }}"
-          class="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+    <form method="post" action="{{ url_for('tasks.add_update_to_task', task_id=task.id) }}" class="space-y-4 text-xs">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <h3 class="font-medium text-slate-900 text-sm">Nouvelle mise à jour d'avancement</h3>
 
-      <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1" for="work_done">Travail effectué aujourd'hui *</label>
-        <textarea id="work_done" name="work_done" rows="2" required
-                  placeholder="Décrivez précisément le travail accompli..."
-                  class="w-full rounded-md border border-slate-300 p-2.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"></textarea>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {% if task.task_type.value == 'quantitative' %}
+      <!-- Statut de la tâche -->
+      <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1" for="realized">
-            Nouveau cumul réalisé (objectif : {{ task.objective|round(0)|int }})
-          </label>
-          <input id="realized" name="realized" type="number" step="any" min="0"
-                 value="{{ task.realized }}" required
-                 class="w-full rounded-md border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
-        </div>
-        {% else %}
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1" for="progress">
-            Nouvelle progression (%)
-          </label>
-          <input id="progress" name="progress" type="number" step="any" min="0" max="100"
-                 value="{{ task.progress }}" required
-                 class="w-full rounded-md border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
-        </div>
-        {% endif %}
-
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1" for="status">Changer le statut (optionnel)</label>
-          <select id="status" name="status" class="w-full rounded-md border border-slate-300 px-3 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
+          <label class="block font-bold text-slate-700 mb-1">Statut de la tâche</label>
+          <select name="status" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white">
             <option value="">Conserver ({{ task.status.value|replace('_', ' ')|capitalize }})</option>
             {% for st in statuses %}
               {% if st != task.status and task.can_transition_to(st) %}
@@ -236,69 +357,90 @@
             {% endfor %}
           </select>
         </div>
+
+        <!-- Slider Progression -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="font-bold text-slate-700">Progression *</label>
+            <span class="font-bold text-blue-600" id="progressValueBadge">{{ task.progress|round(0)|int }} %</span>
+          </div>
+          {% if task.task_type.value == 'quantitative' %}
+          <input type="number" name="realized" min="0" step="any" value="{{ task.realized }}" required
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900 bg-white">
+          {% else %}
+          <input type="range" name="progress" min="0" max="100" value="{{ task.progress|round(0)|int }}" required
+                 id="progressRangeInput"
+                 class="w-full accent-blue-600 cursor-pointer">
+          {% endif %}
+        </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1" for="difficulties">Difficultés rencontrées</label>
-          <textarea id="difficulties" name="difficulties" rows="2"
-                    placeholder="Blocages, pièces manquantes, retards..."
-                    class="w-full rounded-md border border-slate-300 p-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"></textarea>
-        </div>
+      <!-- Description / Travail effectué -->
+      <div>
+        <label class="block font-bold text-slate-700 mb-1">Travail effectué aujourd'hui *</label>
+        <textarea name="work_done" rows="3" required placeholder="Décrivez le travail réalisé et les avancées..."
+                  class="w-full p-3 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"></textarea>
+      </div>
 
+      <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-medium text-slate-700 mb-1" for="next_step">Prochaine étape</label>
-          <textarea id="next_step" name="next_step" rows="2"
-                    placeholder="Actions prévues pour la suite..."
-                    class="w-full rounded-md border border-slate-300 p-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-900"></textarea>
+          <label class="block font-bold text-slate-700 mb-1">Difficultés rencontrées</label>
+          <input type="text" name="difficulties" placeholder="Blocages ou contraintes..."
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Prochaine étape</label>
+          <input type="text" name="next_step" placeholder="Action prévue..."
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-slate-900">
         </div>
       </div>
 
-      <div class="text-right">
-        <button type="submit" class="rounded-md bg-slate-900 text-white px-4 py-2 text-xs font-medium hover:bg-slate-800 shadow">
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('updateTaskModal').close()"
+                class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold hover:bg-slate-50 cursor-pointer">
+          Annuler
+        </button>
+        <button type="submit"
+                class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md shadow-blue-500/20 cursor-pointer">
           Enregistrer la mise à jour
         </button>
       </div>
     </form>
-    {% endif %}
-
-    <!-- Historique des mises à jour -->
-    <div class="space-y-4">
-      <h3 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Historique chronologique</h3>
-      {% if task.updates %}
-      <div class="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-        {% for u in task.updates|reverse %}
-        <div class="relative space-y-1.5 bg-slate-50 p-4 rounded-lg border border-slate-200">
-          <div class="absolute -left-[27px] top-4 w-3.5 h-3.5 rounded-full border-2 border-white bg-blue-600"></div>
-          <div class="flex items-center justify-between text-xs">
-            <span class="font-semibold text-slate-900">{{ u.user.full_name }}</span>
-            <span class="text-slate-400">{{ u.created_at.strftime('%d/%m/%Y à %H:%M') }}</span>
-          </div>
-          <div class="flex items-center gap-2">
-            <span class="rounded bg-blue-100 text-blue-800 px-2 py-0.5 text-[11px] font-bold">
-              Progression : {{ u.progress|round(1) }} %
-            </span>
-          </div>
-          <div class="pt-1 text-xs text-slate-800 whitespace-pre-line">
-            {{ u.work_done }}
-          </div>
-          {% if u.difficulties %}
-          <div class="text-xs text-rose-700 bg-rose-50 p-2 rounded border border-rose-100 mt-2">
-            <strong>Difficulté :</strong> {{ u.difficulties }}
-          </div>
-          {% endif %}
-          {% if u.next_step %}
-          <div class="text-xs text-slate-600 bg-slate-100 p-2 rounded mt-1">
-            <strong>Prochaine étape :</strong> {{ u.next_step }}
-          </div>
-          {% endif %}
-        </div>
-        {% endfor %}
-      </div>
-      {% else %}
-      <p class="text-xs text-slate-400 italic">Aucune mise à jour enregistrée pour le moment.</p>
-      {% endif %}
-    </div>
   </div>
-</div>
+</dialog>
+
+<script>
+  // Slider interactif de progression
+  const rangeInput = document.getElementById('progressRangeInput');
+  const badge = document.getElementById('progressValueBadge');
+  if (rangeInput && badge) {
+    rangeInput.addEventListener('input', function() {
+      badge.textContent = this.value + ' %';
+    });
+  }
+
+  // Graphique de progression circulaire
+  document.addEventListener("DOMContentLoaded", function() {
+    const ctx = document.getElementById('taskDetailProgressChart');
+    if (ctx) {
+      new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Réalisé', 'Restant'],
+          datasets: [{
+            data: [{{ task.progress|round(0)|int }}, {{ 100 - task.progress|round(0)|int if task.progress < 100 else 0 }}],
+            backgroundColor: ['#2563EB', '#F1F5F9'],
+            cutout: '76%',
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}

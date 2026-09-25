@@ -12,9 +12,24 @@ class Team(db.Model):
     member_links = db.relationship(
         "UserTeam", back_populates="team", cascade="all, delete-orphan"
     )
+    tasks = db.relationship("Task", back_populates="team")
+
+    @property
+    def leader(self):
+        lead_link = next((link for link in self.member_links if link.is_team_lead), None)
+        return lead_link.user if lead_link else None
+
+    @property
+    def members(self):
+        return [link.user for link in self.member_links]
+
+    @property
+    def member_count(self) -> int:
+        return len(self.member_links)
 
     def __repr__(self) -> str:
         return f"<Team {self.name}>"
+
 
 
 class UserTeam(db.Model):

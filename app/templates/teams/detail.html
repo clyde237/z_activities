@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% block title %}Équipe {{ team.name }} - Z_Activités{% endblock %}
+
+{% block header_content %}
+<div class="flex items-center gap-3">
+  <a href="{{ url_for('teams.list_teams') }}"
+     class="p-2 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+     title="Retour à la liste des équipes">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+    </svg>
+  </a>
+  <div>
+    <div class="flex items-center gap-2 text-xs text-slate-400">
+      <a href="{{ url_for('teams.list_teams') }}" class="hover:text-slate-600">Équipes</a>
+      <span>&rsaquo;</span>
+      <span class="text-slate-600 font-medium">{{ team.name }}</span>
+    </div>
+    <h1 class="text-xl font-bold text-slate-900 mt-0.5">Détail de l'équipe</h1>
+  </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+  <a href="{{ url_for('teams.edit_team', team_id=team.id) }}"
+     class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-md shadow-blue-500/20 cursor-pointer">
+    <span>✏️</span> Modifier l'équipe
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Grande Carte d'En-tête de l'Équipe -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+    
+    <!-- Identité de l'équipe -->
+    <div class="flex items-start gap-4">
+      <div class="w-14 h-14 rounded-2xl bg-teal-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-teal-500/25 text-2xl font-bold">
+        🏛
+      </div>
+      <div>
+        <div class="flex items-center gap-3">
+          <h2 class="text-2xl font-black text-slate-900">{{ team.name }}</h2>
+          <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span>Active</span>
+          </span>
+        </div>
+        <p class="text-xs text-slate-500 mt-1 max-w-xl">
+          {{ team.description or 'Gestion opérationnelle, pilotage des activités et rapprochements périodiques.' }}
+        </p>
+        <div class="flex items-center gap-4 text-xs text-slate-400 mt-2">
+          <span>👤 Département Financier</span>
+          <span>&bull;</span>
+          <span>📅 Actuelle</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4 mini cartes pastel dans le bandeau supérieur -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 shrink-0">
+      <div class="p-3 rounded-2xl bg-blue-50/70 border border-blue-100 text-center min-w-[100px]">
+        <div class="text-xl font-black text-blue-900 leading-none">{{ team.member_count }}</div>
+        <div class="text-[10px] font-semibold text-slate-600 mt-1">Membres</div>
+        <div class="text-[9px] font-bold text-emerald-600 mt-0.5">Actifs</div>
+      </div>
+
+      <div class="p-3 rounded-2xl bg-purple-50/70 border border-purple-100 text-center min-w-[100px]">
+        <div class="text-xl font-black text-purple-900 leading-none">{{ in_progress_tasks|length }}</div>
+        <div class="text-[10px] font-semibold text-slate-600 mt-1">En cours</div>
+        <div class="text-[9px] font-bold text-purple-600 mt-0.5">Tâches</div>
+      </div>
+
+      <div class="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 text-center min-w-[100px]">
+        <div class="text-xl font-black text-emerald-900 leading-none">{{ completed_tasks|length }}</div>
+        <div class="text-[10px] font-semibold text-slate-600 mt-1">Terminées</div>
+        <div class="text-[9px] font-bold text-emerald-600 mt-0.5">Finalisées</div>
+      </div>
+
+      <div class="p-3 rounded-2xl bg-rose-50/70 border border-rose-100 text-center min-w-[100px]">
+        <div class="text-xl font-black text-rose-900 leading-none">{{ late_tasks|length }}</div>
+        <div class="text-[10px] font-semibold text-slate-600 mt-1">En retard</div>
+        <div class="text-[9px] font-bold {% if late_tasks|length > 0 %}text-rose-600{% else %}text-emerald-600{% endif %} mt-0.5">
+          {{ 'Attention' if late_tasks|length > 0 else 'Conforme' }}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Onglets de Navigation de l'Équipe -->
+  <div class="flex items-center gap-2 border-b border-slate-200 pb-2 text-xs font-semibold text-slate-600">
+    <button class="px-4 py-2 rounded-xl bg-blue-600 text-white shadow-sm font-bold">Vue d'ensemble</button>
+    <button class="px-4 py-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">Membres</button>
+    <button class="px-4 py-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">Tâches</button>
+    <button class="px-4 py-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">Activités</button>
+  </div>
+
+  <!-- Grille Centrale en 3 Colonnes -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Colonne 1 : À propos de l'équipe -->
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+      <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3>À propos de l'équipe</h3>
+      </div>
+
+      <p class="text-xs text-slate-600 leading-relaxed">
+        {{ team.description or "L'équipe est chargée de la gestion quotidienne des activités opérationnelles, du suivi des dossiers et de la collaboration étroite avec la Direction." }}
+      </p>
+
+      <div class="space-y-3 pt-3 border-t border-slate-100 text-xs">
+        <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
+          <span class="text-slate-400">Chef d'équipe</span>
+          <span class="font-bold text-slate-800">{{ team.leader.full_name if team.leader else 'Non désigné' }}</span>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
+          <span class="text-slate-400">Statut</span>
+          <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">Actif</span>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
+          <span class="text-slate-400">Nombre de membres</span>
+          <span class="font-bold text-slate-800">{{ team.member_count }}</span>
+        </div>
+        <div class="flex items-center justify-between py-1.5 border-b border-slate-50">
+          <span class="text-slate-400">Nombre total de tâches</span>
+          <span class="font-bold text-slate-800">{{ total_tasks }}</span>
+        </div>
+        <div class="flex items-center justify-between py-1.5">
+          <span class="text-slate-400">Taux de réalisation</span>
+          <span class="font-bold text-emerald-600">{{ completion_rate }} %</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne 2 : Chef d'équipe & Membres -->
+    <div class="space-y-6">
+      
+      <!-- Carte Chef d'équipe -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+          <span>👑</span>
+          <h3>Chef d'équipe</h3>
+        </div>
+
+        {% if team.leader %}
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-full bg-slate-900 text-white font-black text-lg flex items-center justify-center shadow-md">
+            {{ team.leader.initials }}
+          </div>
+          <div>
+            <div class="font-extrabold text-slate-900 text-sm">{{ team.leader.full_name }}</div>
+            <div class="text-xs text-slate-500">{{ team.leader.role.value|replace('_', ' ')|capitalize }}</div>
+            <div class="text-[11px] text-slate-400 mt-1">{{ team.leader.email }}</div>
+          </div>
+        </div>
+        <div class="pt-2">
+          <a href="mailto:{{ team.leader.email }}"
+             class="w-full py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs transition-colors flex items-center justify-center gap-2">
+            <span>✉</span> Envoyer un message
+          </a>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-400 italic">Aucun chef désigné pour cette équipe.</p>
+        {% endif %}
+      </div>
+
+      <!-- Carte Membres de l'équipe -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+            <h3>Membres de l'équipe ({{ team.member_count }})</h3>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          {% for member in team.members %}
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+            <div class="flex items-center gap-2.5">
+              <div class="w-7 h-7 rounded-full bg-slate-800 text-white font-bold text-[10px] flex items-center justify-center">
+                {{ member.initials }}
+              </div>
+              <div>
+                <div class="font-bold text-slate-900">{{ member.full_name }}</div>
+                <div class="text-[10px] text-slate-400">{{ member.email }}</div>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">Actif</span>
+          </div>
+          {% else %}
+          <div class="text-center py-4 text-slate-400 text-xs">Aucun membre rattaché.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Colonne 3 : Progression & Activités récentes -->
+    <div class="space-y-6">
+      
+      <!-- Carte Progression des tâches (Chart Donut) -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          <h3>Progression des tâches</h3>
+        </div>
+
+        <div class="h-44 relative flex items-center justify-center">
+          <canvas id="teamProgressChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Carte Activités récentes -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between text-sm font-bold text-slate-900">
+          <div class="flex items-center gap-2">
+            <span>⏱</span>
+            <h3>Activités récentes</h3>
+          </div>
+        </div>
+
+        <div class="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 text-xs">
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm"></span>
+            <div class="font-bold text-slate-800">Activité de l'équipe active</div>
+            <div class="text-[10px] text-slate-400">Rapprochements et opérations courantes</div>
+          </div>
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm"></span>
+            <div class="font-bold text-slate-800">{{ total_tasks }} tâches associées</div>
+            <div class="text-[10px] text-slate-400">Gestion et planification</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Section Inférieure : Tâches récentes de l'équipe -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <h3>Tâches récentes de l'équipe</h3>
+      </div>
+      <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs font-semibold text-blue-600 hover:underline">
+        Voir toutes les tâches &rarr;
+      </a>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-xs">
+        <thead>
+          <tr class="border-b border-slate-100 bg-slate-50/60 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+            <th class="py-3 px-3 w-12">#</th>
+            <th class="py-3 px-4 min-w-[200px]">Titre de la tâche</th>
+            <th class="py-3 px-4 min-w-[140px]">Assignée à</th>
+            <th class="py-3 px-3">Priorité</th>
+            <th class="py-3 px-3">Statut</th>
+            <th class="py-3 px-4 min-w-[130px]">Progression</th>
+            <th class="py-3 px-4">Échéance</th>
+            <th class="py-3 px-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          {% for t in tasks %}
+          <tr class="hover:bg-slate-50/70 transition-colors">
+            <td class="py-3 px-3 font-mono text-slate-400 font-bold">#{{ "%02d"|format(t.id) }}</td>
+            <td class="py-3 px-4 font-bold text-slate-900">
+              <a href="{{ url_for('tasks.view_task', task_id=t.id) }}" class="hover:text-blue-600 transition-colors">
+                {{ t.title }}
+              </a>
+            </td>
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center">
+                  {{ t.assigned_to.initials if t.assigned_to else 'T' }}
+                </div>
+                <span>{{ t.assigned_to.full_name if t.assigned_to else 'Non assigné' }}</span>
+              </div>
+            </td>
+            <td class="py-3 px-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold
+                {% if t.priority.value == 'urgente' %}bg-rose-100 text-rose-700
+                {% elif t.priority.value == 'normale' %}bg-amber-100 text-amber-700
+                {% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                {{ 'Haute' if t.priority.value == 'urgente' else ('Moyenne' if t.priority.value == 'normale' else 'Basse') }}
+              </span>
+            </td>
+            <td class="py-3 px-3 whitespace-nowrap">
+              <span class="inline-flex items-center gap-1 text-[11px] font-semibold
+                {% if t.status.value == 'terminee' %}text-emerald-700
+                {% elif t.is_late() %}text-rose-700
+                {% else %}text-blue-700{% endif %}">
+                ● {{ t.status.value|capitalize }}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                  <div class="h-1.5 rounded-full bg-blue-600" style="width: {{ t.progress|round(0)|int }}%"></div>
+                </div>
+                <span class="text-[10px] font-bold text-slate-600">{{ t.progress|round(0)|int }}%</span>
+              </div>
+            </td>
+            <td class="py-3 px-4 text-slate-500 whitespace-nowrap">
+              {{ t.due_date.strftime('%d %b. %Y') if t.due_date else '—' }}
+            </td>
+            <td class="py-3 px-3 text-right">
+              <a href="{{ url_for('tasks.view_task', task_id=t.id) }}"
+                 class="p-1 rounded-lg text-slate-400 hover:text-blue-600 transition-colors">
+                👁
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="py-8 text-center text-slate-400">Aucune tâche active pour cette équipe.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Script Chart.js Donut -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const ctx = document.getElementById('teamProgressChart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Terminées', 'En cours', 'À faire', 'En retard'],
+        datasets: [{
+          data: [
+            {{ completed_tasks|length }},
+            {{ in_progress_tasks|length }},
+            {{ to_do_tasks|length }},
+            {{ late_tasks|length }}
+          ],
+          backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#EF4444'],
+          borderWidth: 2,
+          borderColor: '#FFFFFF'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { boxWidth: 10, font: { size: 10 } }
+          }
+        },
+        cutout: '70%'
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

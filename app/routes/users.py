@@ -17,7 +17,29 @@ MIN_PASSWORD_LENGTH = 8
 @chef_service_required
 def list_users():
     users = db.session.query(User).order_by(User.last_name, User.first_name).all()
-    return render_template("users/list.html", users=users)
+    teams = db.session.query(Team).order_by(Team.name).all()
+
+    total_users = len(users)
+    active_users = sum(1 for u in users if u.is_active)
+    inactive_users = sum(1 for u in users if not u.is_active)
+    suspended_users = 0
+
+    active_pct = round((active_users / total_users * 100)) if total_users else 0
+    inactive_pct = round((inactive_users / total_users * 100)) if total_users else 0
+
+    return render_template(
+        "users/list.html",
+        users=users,
+        teams=teams,
+        roles=UserRole,
+        total_users=total_users,
+        active_users=active_users,
+        inactive_users=inactive_users,
+        suspended_users=suspended_users,
+        active_pct=active_pct,
+        inactive_pct=inactive_pct,
+    )
+
 
 
 @users_blueprint.route("/new", methods=["GET", "POST"])

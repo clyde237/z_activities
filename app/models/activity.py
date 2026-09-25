@@ -29,5 +29,20 @@ class UnexpectedActivity(db.Model):
 
     user = db.relationship("User")
 
+    @property
+    def status_label(self) -> str:
+        if self.result or self.end_time:
+            return "Résolue"
+        if self.start_time:
+            return "En cours"
+        return "En attente"
+
+    @property
+    def team_name(self) -> str:
+        if self.user and self.user.team_links:
+            return self.user.team_links[0].team.name
+        return "Générale"
+
     def __repr__(self) -> str:
         return f"<UnexpectedActivity {self.id} {self.title!r}>"
+

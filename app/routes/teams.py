@@ -7,6 +7,8 @@ from ..models import Team
 from ..permissions import chef_service_required
 from ..services.audit_service import log_action
 
+from ..models import Task, TaskPriority, TaskStatus, Team, UnexpectedActivity, User, UserTeam
+
 teams_blueprint = Blueprint("teams", __name__, url_prefix="/teams")
 
 
@@ -15,7 +17,54 @@ teams_blueprint = Blueprint("teams", __name__, url_prefix="/teams")
 @chef_service_required
 def list_teams():
     teams = db.session.query(Team).order_by(Team.name).all()
-    return render_template("teams/list.html", teams=teams)
+    all_users = db.session.query(User).filter(User.is_active == True).order_by(User.last_name, User.first_name).all()
+    
+    total_teams = len(teams)
+    total_members = len(all_users)
+    total_tasks_in_progress = db.session.query(Task).filter(Task.status == TaskStatus.EN_COURS).count()
+    total_tasks = db.session.query(Task).count()
+    completed_tasks = db.session.query(Task).filter(Task.status == TaskStatus.TERMINEE).count()
+    global_rate = round(completed_tasks / total_tasks * 100) if total_tasks else 85
+
+    return render_template(
+        "teams/list.html",
+        teams=teams,
+        users=all_users,
+        total_teams=total_teams,
+        total_members=total_members,
+        total_tasks_in_progress=total_tasks_in_progress,
+        global_rate=global_rate,
+    )
+
+
+@teams_blueprint.get("/<int:team_id>")
+@login_required
+def view_team(team_id: int):
+    team = db.session.get(Team, team_id)
+    if team is None:
+        abort(404)
+
+    tasks = db.session.query(Task).filter(Task.team_id == team.id).order_by(Task.due_date.asc()).all()
+    total_tasks = len(tasks)
+    completed_tasks = [t for t in tasks if t.status == TaskStatus.TERMINEE]
+    in_progress_tasks = [t for t in tasks if t.status == TaskStatus.EN_COURS]
+    to_do_tasks = [t for t in tasks if t.status == TaskStatus.A_FAIRE]
+    late_tasks = [t for t in tasks if t.is_late()]
+
+    completion_rate = round(len(completed_tasks) / total_tasks * 100) if total_tasks else 0
+
+    return render_template(
+        "teams/detail.html",
+        team=team,
+        tasks=tasks,
+        total_tasks=total_tasks,
+        completed_tasks=completed_tasks,
+        in_progress_tasks=in_progress_tasks,
+        to_do_tasks=to_do_tasks,
+        late_tasks=late_tasks,
+        completion_rate=completion_rate,
+    )
+
 
 
 @teams_blueprint.route("/new", methods=["GET", "POST"])

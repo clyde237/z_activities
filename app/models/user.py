@@ -57,6 +57,15 @@ class User(UserMixin, db.Model):
     def team_ids(self) -> set[int]:
         return {link.team_id for link in self.team_links}
 
+    @property
+    def initials(self) -> str:
+        f = self.first_name[0].upper() if self.first_name else ""
+        l = self.last_name[0].upper() if self.last_name else ""
+        return f"{f}{l}" or "U"
+
+    def is_any_team_lead(self) -> bool:
+        return any(link.is_team_lead for link in self.team_links)
+
     def __repr__(self) -> str:
         return f"<User {self.username}>"
 

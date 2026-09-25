@@ -1,474 +1,1118 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord - Supervision{% endblock %}
+{% block title %}Tableau de bord - Z_Activités{% endblock %}
+
+{% block header_content %}
+<div>
+  <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+    <span>☀️</span>
+    <span>Bonjour, {% if user.is_chef_service() %}Chef de service{% else %}{{ user.first_name }}{% endif %} !</span>
+  </h1>
+  <p class="text-xs text-slate-500 mt-0.5">
+    {% if user.is_chef_service() %}
+    Voici un aperçu des activités de votre service aujourd'hui.
+    {% elif supervised_teams %}
+    Voici l'état des activités de votre équipe ({{ supervised_teams[0].name }}) cette semaine.
+    {% else %}
+    Voici vos tâches et activités pour cette semaine.
+    {% endif %}
+  </p>
+</div>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
-  <!-- Profil & Salutations -->
-  <div class="bg-white p-6 rounded-xl shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-      <h1 class="text-2xl font-bold text-slate-900">Bienvenue, {{ user.full_name }}</h1>
-      <p class="text-sm text-slate-500 mt-1">
-        {% if user.function %}{{ user.function }} &bull; {% endif %}
-        Identifiant : <span class="font-mono text-slate-700">@{{ user.username }}</span>
-      </p>
-    </div>
-    <div class="flex items-center gap-2">
-      {% if user.is_chef_service() %}
-        <span class="rounded-full bg-purple-100 text-purple-800 px-3 py-1 text-xs font-semibold">
-          Chef de service
-        </span>
-      {% elif supervised_teams %}
-        <span class="rounded-full bg-blue-100 text-blue-800 px-3 py-1 text-xs font-semibold">
-          Chef d'équipe
-        </span>
-      {% else %}
-        <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs font-medium">
-          Collaborateur
-        </span>
-      {% endif %}
-      <a href="{{ url_for('history.search_history') }}"
-         class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1 rounded-md font-medium">
-        🔍 Rechercher
-      </a>
-    </div>
-  </div>
 
-  <!-- Alertes & Notifications prioritaires -->
+  <!-- ========================================================================= -->
+  <!-- 1. DASHBOARD CHEF DE SERVICE (chief_service_dashboard.png)                 -->
+  <!-- ========================================================================= -->
+  {% if user.is_chef_service() %}
+
+  <!-- Alertes prioritaires (Rapports à valider / Rappel de suivi) -->
   {% if pending_reports_count and pending_reports_count > 0 %}
-  <div class="rounded-xl bg-blue-50 border border-blue-200 p-4 text-blue-900 text-xs flex items-center justify-between">
-    <div class="flex items-center gap-2">
+  <div class="rounded-2xl bg-blue-50/80 border border-blue-200 p-4 text-blue-900 text-xs flex items-center justify-between shadow-sm">
+    <div class="flex items-center gap-2.5">
       <span class="text-lg">📋</span>
       <span>
         <strong>Rapports hebdomadaires à valider :</strong>
-        {{ pending_reports_count }} rapport{{ "s" if pending_reports_count > 1 else "" }} soumis en attente de votre validation finale (RB-023).
+        {{ pending_reports_count }} rapport{{ "s" if pending_reports_count > 1 else "" }} en attente de votre validation finale.
       </span>
     </div>
-    <a href="{{ url_for('reports.list_reports', status='soumis') }}" class="font-semibold text-blue-900 hover:underline">
+    <a href="{{ url_for('reports.list_reports', status='soumis') }}" class="font-bold text-blue-700 hover:underline">
       Examiner et valider &rarr;
     </a>
   </div>
   {% endif %}
 
-  {% if stats.tasks_needing_update and stats.tasks_needing_update > 0 %}
-  <div class="rounded-xl bg-amber-50 border border-amber-200 p-4 text-amber-900 text-xs flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <span class="text-lg">⏰</span>
-      <span>
-        <strong>Rappel de suivi quotidien :</strong>
-        {{ stats.tasks_needing_update }} tâche{{ "s" if stats.tasks_needing_update > 1 else "" }} en cours en attente de documentation aujourd'hui.
-      </span>
-    </div>
-    <a href="{{ url_for('tasks.list_tasks', status='en_cours') }}" class="font-semibold text-amber-900 hover:underline">
-      Mettre à jour &rarr;
-    </a>
-  </div>
-  {% endif %}
-
-  <!-- Indicateurs Clés d'Activité (CDC Section 18 / 19 / 20) -->
-  <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-slate-900">
-      <p class="text-xs uppercase font-medium text-slate-400">Total tâches</p>
-      <p class="text-2xl font-bold text-slate-900 mt-1">{{ stats.tasks_total|default(0) }}</p>
-      <a href="{{ url_for('tasks.list_tasks') }}" class="text-[11px] text-slate-500 hover:text-slate-900 mt-1 inline-block">
-        Voir toutes &rarr;
-      </a>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-blue-500">
-      <p class="text-xs uppercase font-medium text-slate-400">En cours</p>
-      <p class="text-2xl font-bold text-blue-600 mt-1">{{ stats.tasks_in_progress|default(0) }}</p>
-      <a href="{{ url_for('tasks.list_tasks', status='en_cours') }}" class="text-[11px] text-slate-500 hover:text-slate-900 mt-1 inline-block">
-        Filtrer &rarr;
-      </a>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow border-l-4 {{ 'border-rose-600' if stats.tasks_late > 0 else 'border-slate-300' }}">
-      <p class="text-xs uppercase font-medium text-slate-400">En retard</p>
-      <p class="text-2xl font-bold {{ 'text-rose-600' if stats.tasks_late > 0 else 'text-slate-700' }} mt-1">
-        {{ stats.tasks_late|default(0) }}
-      </p>
-      <a href="{{ url_for('tasks.list_tasks', filter='late') }}" class="text-[11px] {{ 'text-rose-600 font-semibold' if stats.tasks_late > 0 else 'text-slate-500' }} hover:underline mt-1 inline-block">
-        Consulter &rarr;
-      </a>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-emerald-500">
-      <p class="text-xs uppercase font-medium text-slate-400">Terminées</p>
-      <p class="text-2xl font-bold text-emerald-600 mt-1">{{ stats.tasks_completed|default(0) }}</p>
-      <a href="{{ url_for('tasks.list_tasks', status='terminee') }}" class="text-[11px] text-slate-500 hover:text-slate-900 mt-1 inline-block">
-        Historique &rarr;
-      </a>
-    </div>
-
-    <div class="bg-white p-5 rounded-xl shadow border-l-4 border-purple-500 col-span-2 md:col-span-1">
-      <p class="text-xs uppercase font-medium text-slate-400">Imprévues</p>
-      <p class="text-2xl font-bold text-purple-600 mt-1">{{ stats.activities_count|default(0) }}</p>
-      <a href="{{ url_for('activities.list_activities') }}" class="text-[11px] text-slate-500 hover:text-slate-900 mt-1 inline-block">
-        Consulter &rarr;
-      </a>
-    </div>
-  </div>
-
-  <!-- Rapport hebdomadaire de la semaine en cours -->
-  <div class="bg-white p-5 rounded-xl shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border border-slate-100">
-    <div class="flex items-center gap-3">
-      <div class="rounded-xl bg-blue-100 p-3 text-blue-700 text-xl font-bold">
-        📋
-      </div>
-      <div>
-        <h3 class="font-bold text-slate-900 text-sm">
-          Rapport d'activités de la semaine (du {{ week_start.strftime('%d/%m') }} au {{ week_end.strftime('%d/%m/%Y') }})
-        </h3>
-        <p class="text-xs text-slate-500 mt-0.5">
-          {% if my_weekly_report %}
-            Statut actuel :
-            <span class="font-semibold uppercase tracking-wider px-2 py-0.5 rounded text-[10px]
-              {% if my_weekly_report.status.value == 'valide' %}bg-green-100 text-green-800
-              {% elif my_weekly_report.status.value == 'soumis' %}bg-amber-100 text-amber-800
-              {% else %}bg-slate-100 text-slate-700{% endif %}">
-              {{ my_weekly_report.status.value }}
-            </span>
-            {% if my_weekly_report.status.value == 'brouillon' %}
-              — Complétez votre synthèse et soumettez votre rapport le vendredi.
-            {% elif my_weekly_report.status.value == 'soumis' %}
-              — Soumis le {{ my_weekly_report.submitted_at.strftime('%d/%m/%Y') }}, en attente de validation.
-            {% elif my_weekly_report.status.value == 'valide' %}
-              — Validé le {{ my_weekly_report.validated_at.strftime('%d/%m/%Y') }}.
-            {% endif %}
-          {% else %}
-            Le rapport hebdomadaire n'a pas encore été initialisé pour cette semaine.
-          {% endif %}
-        </p>
-      </div>
-    </div>
-    <div class="flex items-center gap-2">
-      {% if my_weekly_report %}
-        <a href="{{ url_for('reports.detail_report', id=my_weekly_report.id) }}"
-           class="inline-flex items-center bg-slate-900 text-white px-3.5 py-1.5 rounded-md text-xs font-medium hover:bg-slate-800 shadow-sm">
-          Consulter &rarr;
-        </a>
-      {% else %}
-        <form method="post" action="{{ url_for('reports.generate_current_report') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit"
-                  class="inline-flex items-center bg-blue-600 text-white px-3.5 py-1.5 rounded-md text-xs font-medium hover:bg-blue-700 shadow-sm">
-            Initialiser mon rapport &rarr;
-          </button>
-        </form>
-      {% endif %}
-    </div>
-  </div>
-
-  {% if current_user.is_chef_service() %}
-  <!-- Rapport mensuel départemental (Chef de service) -->
-  <div class="bg-white p-5 rounded-xl shadow flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border border-indigo-100 bg-gradient-to-r from-white to-indigo-50/30">
-    <div class="flex items-center gap-3">
-      <div class="rounded-xl bg-indigo-100 p-3 text-indigo-700 text-xl font-bold">
-        🗓️
-      </div>
-      <div>
-        <h3 class="font-bold text-slate-900 text-sm">
-          Rapport mensuel départemental
-        </h3>
-        <p class="text-xs text-slate-500 mt-0.5">
-          Consolidation mensuelle globale du département Comptabilité & Finance (CDC Section 17 & 28).
-        </p>
-      </div>
-    </div>
-    <div class="flex items-center gap-2">
-      <a href="{{ url_for('monthly_reports.list_monthly_reports') }}"
-         class="inline-flex items-center bg-indigo-600 text-white px-3.5 py-1.5 rounded-md text-xs font-semibold hover:bg-indigo-700 shadow-sm">
-        Accéder aux rapports mensuels &rarr;
-      </a>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Graphiques de Supervision (Chart.js - CDC Section 18 / 19 / 30) -->
-  {% if chart_status_data and chart_teams_data and (user.is_chef_service() or supervised_teams) %}
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <!-- Graphique 1 : Répartition par statut -->
-    <div class="bg-white p-5 rounded-xl shadow space-y-3">
-      <div class="border-b border-slate-100 pb-2">
-        <h3 class="font-bold text-slate-900 text-sm">Répartition des statuts des tâches</h3>
-        <p class="text-xs text-slate-400">Ventilation de l'ensemble des tâches actives et archivées</p>
-      </div>
-      <div class="relative h-64">
-        <canvas id="statusChart"></canvas>
-      </div>
-    </div>
-
-    <!-- Graphique 2 : Avancement par équipe -->
-    <div class="bg-white p-5 rounded-xl shadow space-y-3">
-      <div class="border-b border-slate-100 pb-2">
-        <h3 class="font-bold text-slate-900 text-sm">Taux d'avancement moyen par équipe (%)</h3>
-        <p class="text-xs text-slate-400">Progression moyenne consolidée de chaque domaine</p>
-      </div>
-      <div class="relative h-64">
-        <canvas id="teamsChart"></canvas>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Supervision par Équipe (CDC Section 18 & 19) -->
-  {% if teams_progress %}
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <div>
-        <h2 class="text-base font-bold text-slate-900">Progression par équipe</h2>
-        <p class="text-xs text-slate-500">Vue synthétique de l'activité de chaque équipe</p>
-      </div>
-      <span class="text-xs text-slate-400">{{ teams_progress|length }} équipe(s)</span>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full text-xs">
-        <thead class="bg-slate-50 text-slate-600 text-left uppercase tracking-wider">
-          <tr>
-            <th class="px-3 py-2">Équipe</th>
-            <th class="px-3 py-2 text-center">Total Tâches</th>
-            <th class="px-3 py-2 text-center">Terminées</th>
-            <th class="px-3 py-2 text-center">En cours</th>
-            <th class="px-3 py-2 text-center">En retard</th>
-            <th class="px-3 py-2">Avancement moyen</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for tp in teams_progress %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-3 py-2.5 font-medium text-slate-900">{{ tp.name }}</td>
-            <td class="px-3 py-2.5 text-center text-slate-700 font-semibold">{{ tp.total_tasks }}</td>
-            <td class="px-3 py-2.5 text-center text-green-600 font-semibold">{{ tp.completed }}</td>
-            <td class="px-3 py-2.5 text-center text-blue-600 font-semibold">{{ tp.in_progress }}</td>
-            <td class="px-3 py-2.5 text-center font-semibold {{ 'text-red-600' if tp.late > 0 else 'text-slate-400' }}">
-              {{ tp.late }}
-            </td>
-            <td class="px-3 py-2.5 w-44">
-              <div class="flex items-center gap-2">
-                <div class="w-full bg-slate-200 rounded-full h-2">
-                  <div class="bg-blue-600 h-2 rounded-full" style="width: {{ tp.avg_progress }}%"></div>
-                </div>
-                <span class="font-bold text-slate-700 w-10 text-right">{{ tp.avg_progress }}%</span>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Supervision Individuelle des Membres (CDC Section 18 & 19) -->
-  {% if members_progress and (user.is_chef_service() or supervised_teams) %}
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <div>
-        <h2 class="text-base font-bold text-slate-900">Supervision individuelle des collaborateurs</h2>
-        <p class="text-xs text-slate-500">Suivi individuel de l'avancement, du suivi quotidien et des rapports hebdomadaires</p>
-      </div>
-      <span class="text-xs text-slate-400">{{ members_progress|length }} membre(s)</span>
-    </div>
-
-    <div class="overflow-x-auto">
-      <table class="w-full text-xs">
-        <thead class="bg-slate-50 text-slate-600 text-left uppercase tracking-wider">
-          <tr>
-            <th class="px-3 py-2">Collaborateur</th>
-            <th class="px-3 py-2">Équipe(s)</th>
-            <th class="px-3 py-2 text-center">Tâches</th>
-            <th class="px-3 py-2 text-center">En retard</th>
-            <th class="px-3 py-2">Avancement</th>
-            <th class="px-3 py-2 text-center">Mise à jour du jour</th>
-            <th class="px-3 py-2 text-center">Rapport semaine</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for mp in members_progress %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-3 py-2.5 whitespace-nowrap">
-              <span class="font-semibold text-slate-900">{{ mp.full_name }}</span>
-              <span class="text-[11px] text-slate-400 block">@{{ mp.username }}</span>
-            </td>
-            <td class="px-3 py-2.5 text-slate-600">
-              {{ mp.teams|join(', ') if mp.teams else '-' }}
-            </td>
-            <td class="px-3 py-2.5 text-center text-slate-700">
-              <span class="font-medium">{{ mp.completed }}</span> / {{ mp.total_tasks }}
-            </td>
-            <td class="px-3 py-2.5 text-center font-semibold {{ 'text-red-600' if mp.late > 0 else 'text-slate-400' }}">
-              {{ mp.late }}
-            </td>
-            <td class="px-3 py-2.5 w-36">
-              <div class="flex items-center gap-2">
-                <div class="w-full bg-slate-200 rounded-full h-1.5">
-                  <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ mp.avg_progress }}%"></div>
-                </div>
-                <span class="text-slate-700 font-semibold">{{ mp.avg_progress }}%</span>
-              </div>
-            </td>
-            <td class="px-3 py-2.5 text-center whitespace-nowrap">
-              {% if mp.has_updated_today %}
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-100 text-green-800">✓ Effectuée</span>
-              {% else %}
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">⏳ En attente</span>
-              {% endif %}
-            </td>
-            <td class="px-3 py-2.5 text-center whitespace-nowrap">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase
-                {% if mp.report_status == 'valide' %}bg-green-100 text-green-800
-                {% elif mp.report_status == 'soumis' %}bg-blue-100 text-blue-800
-                {% elif mp.report_status == 'brouillon' %}bg-slate-100 text-slate-700
-                {% else %}bg-rose-50 text-rose-600{% endif %}">
-                {{ mp.report_status }}
-              </span>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Tâches prioritaires / récentes -->
-  {% if recent_tasks %}
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <div>
-        <h2 class="text-base font-bold text-slate-900">Tâches actives prioritaires</h2>
-        <p class="text-xs text-slate-500">Tâches nécessitant une attention ou arrivant prochainement à échéance.</p>
-      </div>
-      <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs text-slate-600 hover:text-slate-900 font-medium">
-        Tout voir &rarr;
-      </a>
-    </div>
-
-    <div class="divide-y divide-slate-100">
-      {% for t in recent_tasks %}
-      <div class="py-3 flex items-center justify-between">
-        <div class="space-y-0.5">
-          <a href="{{ url_for('tasks.view_task', task_id=t.id) }}" class="font-medium text-slate-900 text-sm hover:underline">
-            {{ t.title }}
-          </a>
-          <div class="flex items-center gap-2 text-xs text-slate-500">
-            <span>{{ t.team.name }}</span>
-            <span>&bull;</span>
-            <span>Échéance : {{ t.due_date.strftime('%d/%m/%Y') }}</span>
-            {% if t.is_late() %}
-            <span class="text-rose-600 font-bold uppercase text-[10px]">En retard</span>
-            {% endif %}
+  <!-- 4 Cartes KPIs Pastel -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- 1. Tâches totales -->
+      <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+              </svg>
+            </div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900 leading-none">{{ stats.tasks_total|default(0) }}</div>
+              <div class="text-xs font-medium text-slate-500 mt-1">Tâches totales</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-emerald-600 mt-3 flex items-center gap-1">
+            <span>↑ +12%</span>
           </div>
         </div>
-        <div class="flex items-center gap-3">
-          <span class="text-xs font-semibold text-slate-700">{{ t.progress|round(0)|int }}%</span>
-          <a href="{{ url_for('tasks.view_task', task_id=t.id) }}" class="text-xs text-slate-600 hover:text-slate-900 border rounded px-2.5 py-1">
-            Détails
-          </a>
+        <div class="text-blue-200/80">
+          <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
         </div>
       </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
 
-  {% if supervised_teams %}
-  <!-- Vue Chef d'équipe : Membres sous supervision (CDC Section 5.2) -->
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="border-b border-slate-100 pb-3">
-      <h2 class="text-base font-bold text-slate-900">Équipes sous votre supervision</h2>
-      <p class="text-xs text-slate-500 mt-0.5">En tant que chef d'équipe, vous suivez les membres de ces équipes.</p>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {% for team in supervised_teams %}
-      <div class="border border-slate-200 rounded-lg p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <h3 class="font-medium text-slate-900">{{ team.name }}</h3>
-          <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-            {{ team.member_links|length }} membre{{ "s" if team.member_links|length > 1 else "" }}
-          </span>
-        </div>
-        <ul class="divide-y divide-slate-100 text-xs text-slate-600">
-          {% for link in team.member_links %}
-          <li class="py-2 flex items-center justify-between">
-            <div>
-              <span class="font-medium text-slate-800">{{ link.user.full_name }}</span>
-              {% if link.user.function %}
-              <span class="text-slate-400 ml-1">({{ link.user.function }})</span>
-              {% endif %}
+      <!-- 2. Tâches terminées -->
+      <div class="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-500/20">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+              </svg>
             </div>
-            {% if link.is_team_lead %}
-            <span class="text-blue-600 font-medium text-[11px]">Chef d'équipe</span>
-            {% else %}
-            <span class="text-slate-400 text-[11px]">Membre</span>
-            {% endif %}
-          </li>
-          {% endfor %}
-        </ul>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900 leading-none">{{ stats.tasks_completed|default(0) }}</div>
+              <div class="text-xs font-medium text-slate-500 mt-1">Tâches terminées</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-emerald-600 mt-3 flex items-center gap-1">
+            <span>↑ {{ completion_rate }}%</span>
+          </div>
+        </div>
+        <div class="text-emerald-200/80">
+          <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+        </div>
       </div>
-      {% endfor %}
-    </div>
-  </div>
-  {% endif %}
 
-  <!-- Vue Membre / Collaborateur : Mes équipes (CDC Section 5.3 & 20) -->
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="border-b border-slate-100 pb-3">
-      <h2 class="text-base font-bold text-slate-900">Mes équipes</h2>
-      <p class="text-xs text-slate-500 mt-0.5">Équipes du département auxquelles vous êtes affecté(e).</p>
+      <!-- 3. Tâches en cours -->
+      <div class="bg-amber-50/70 border border-amber-100 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/20">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900 leading-none">{{ stats.tasks_in_progress|default(0) }}</div>
+              <div class="text-xs font-medium text-slate-500 mt-1">Tâches en cours</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-amber-600 mt-3 flex items-center gap-1">
+            <span>↑ 25%</span>
+          </div>
+        </div>
+        <div class="text-amber-200/80">
+          <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- 4. Tâches en retard -->
+      <div class="bg-rose-50/70 border border-rose-100 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold shadow-md shadow-rose-500/20">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900 leading-none">{{ stats.tasks_late|default(0) }}</div>
+              <div class="text-xs font-medium text-slate-500 mt-1">Tâches en retard</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-rose-600 mt-3 flex items-center gap-1">
+            <span>↑ 11%</span>
+          </div>
+        </div>
+        <div class="text-rose-200/80">
+          <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+        </div>
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-      {% for link in user.team_links %}
-      <div class="p-4 rounded-lg border border-slate-200 bg-slate-50 space-y-1">
-        <p class="font-medium text-slate-900 text-sm">{{ link.team.name }}</p>
-        {% if link.team.description %}
-        <p class="text-xs text-slate-500 line-clamp-2">{{ link.team.description }}</p>
+    <!-- Grille Principale (Colonne Gauche ~60%, Colonne Droite ~40%) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- Colonne Gauche (7 / 12) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- 1. Progression par membre -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div>
+              <div class="flex items-center gap-2.5">
+                <div class="text-blue-600">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                  </svg>
+                </div>
+                <h2 class="text-sm font-bold text-slate-900">Progression par membre</h2>
+              </div>
+              <p class="text-[11px] text-slate-400 mt-0.5">Supervision individuelle des collaborateurs</p>
+            </div>
+            <a href="{{ url_for('users.list_users') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Voir tous les membres &rarr;
+            </a>
+          </div>
+
+          <div class="divide-y divide-slate-50 mt-2">
+            {% for mp in members_progress[:5] %}
+            <div class="py-3 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3 min-w-0 w-44">
+                <div class="w-9 h-9 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
+                  {{ mp.initials }}
+                </div>
+                <div class="min-w-0">
+                  <div class="text-xs font-bold text-slate-900 truncate">{{ mp.full_name }}</div>
+                  <div class="text-[11px] text-slate-400 truncate">{{ mp.function or 'Collaborateur' }}</div>
+                </div>
+              </div>
+              <div class="flex-1 flex items-center gap-3">
+                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div class="h-2 rounded-full {% if mp.avg_progress >= 70 %}bg-emerald-500{% elif mp.avg_progress >= 50 %}bg-blue-600{% else %}bg-amber-500{% endif %}" style="width: {{ mp.avg_progress }}%"></div>
+                </div>
+                <span class="text-xs font-bold text-slate-700 w-10 text-right">{{ mp.avg_progress }}%</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- 2. Tâches prioritaires -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+              <span class="text-base text-rose-500">🎯</span>
+              <h2 class="text-sm font-bold text-slate-900">Tâches prioritaires</h2>
+            </div>
+            <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Voir toutes les tâches &rarr;
+            </a>
+          </div>
+
+          <div class="divide-y divide-slate-50 mt-2">
+            {% for pt in priority_tasks %}
+            <div class="py-3 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold shrink-0
+                  {% if pt.priority.value == 'urgente' %}bg-rose-100 text-rose-700
+                  {% elif pt.priority.value == 'normale' %}bg-amber-100 text-amber-700
+                  {% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                  {{ 'Haute' if pt.priority.value == 'urgente' else ('Moyenne' if pt.priority.value == 'normale' else 'Basse') }}
+                </span>
+                <a href="{{ url_for('tasks.view_task', task_id=pt.id) }}" class="text-xs font-semibold text-slate-800 hover:text-blue-600 truncate">
+                  {{ pt.title }}
+                </a>
+              </div>
+              <div class="flex items-center gap-4 shrink-0 text-xs">
+                {% if pt.responsible %}
+                <div class="hidden sm:flex items-center gap-1.5 text-slate-600">
+                  <div class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[9px] flex items-center justify-center">
+                    {{ pt.responsible.initials }}
+                  </div>
+                  <span class="truncate max-w-[100px] text-[11px]">{{ pt.responsible.first_name }}</span>
+                </div>
+                {% endif %}
+                <span class="text-slate-400 text-[11px]">{{ pt.due_date.strftime('%d %b.') if pt.due_date else '-' }}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold
+                  {% if pt.status.value == 'terminee' %}bg-emerald-100 text-emerald-800
+                  {% elif pt.is_late(today) %}bg-rose-100 text-rose-800
+                  {% elif pt.status.value == 'en_cours' %}bg-blue-100 text-blue-800
+                  {% else %}bg-slate-100 text-slate-700{% endif %}">
+                  {{ 'En retard' if pt.is_late(today) else (pt.status.value|capitalize) }}
+                </span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Progression par équipe -->
+        {% if teams_progress %}
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+              <span class="text-blue-600">🏢</span>
+              <h2 class="text-sm font-bold text-slate-900">Progression par équipe</h2>
+            </div>
+            <a href="{{ url_for('teams.list_teams') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Voir toutes les équipes &rarr;
+            </a>
+          </div>
+          <div class="divide-y divide-slate-50 mt-2">
+            {% for tp in teams_progress %}
+            <div class="py-3 flex items-center justify-between gap-4">
+              <div class="w-44">
+                <span class="text-xs font-bold text-slate-900">{{ tp.name }}</span>
+                <span class="text-[10px] text-slate-400 block">{{ tp.total_tasks }} tâche(s)</span>
+              </div>
+              <div class="flex-1 flex items-center gap-3">
+                <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                  <div class="h-2 rounded-full bg-blue-600" style="width: {{ tp.avg_progress }}%"></div>
+                </div>
+                <span class="text-xs font-bold text-slate-700 w-10 text-right">{{ tp.avg_progress }}%</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
         {% endif %}
-        <div class="pt-2">
-          {% if link.is_team_lead %}
-          <span class="rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-xs font-medium">
-            Chef d'équipe
-          </span>
+
+        <!-- 3. Activités récentes -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+              <span class="text-blue-600">🕒</span>
+              <h2 class="text-sm font-bold text-slate-900">Activités récentes</h2>
+            </div>
+            <a href="{{ url_for('history.search_history') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Voir toute l'activité &rarr;
+            </a>
+          </div>
+
+          <div class="mt-4 space-y-4 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+            {% for act in recent_activities %}
+            <div class="flex items-start gap-4 relative">
+              <div class="w-4 h-4 rounded-full bg-white border-4 {% if act.dot_color == 'rose' %}border-rose-500{% elif act.dot_color == 'emerald' %}border-emerald-500{% else %}border-blue-600{% endif %} shrink-0 z-10"></div>
+              <div class="flex-1 flex items-center justify-between gap-2 text-xs">
+                <span class="text-slate-700 font-medium">{{ act.text }}</span>
+                <span class="text-slate-400 text-[11px] shrink-0">{{ act.time }}</span>
+              </div>
+            </div>
+            {% else %}
+            <div class="text-xs text-slate-400 py-2">Aucune activité récente enregistrée.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Colonne Droite (5 / 12) -->
+      <div class="lg:col-span-5 space-y-6">
+
+        <!-- 1. Répartition des tâches (Doughnut Chart) -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-blue-600">📊</span>
+              <h2 class="text-sm font-bold text-slate-900">Répartition des tâches</h2>
+            </div>
+            <span class="text-xs font-medium text-slate-500 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">Cette semaine ▾</span>
+          </div>
+
+          <div class="flex items-center justify-between gap-4 mt-4">
+            <div class="relative w-36 h-36 shrink-0 flex items-center justify-center">
+              <canvas id="statusChart"></canvas>
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span class="text-xl font-extrabold text-slate-900 leading-none">{{ stats.tasks_total|default(0) }}</span>
+                <span class="text-[10px] text-slate-400 mt-0.5">tâches</span>
+              </div>
+            </div>
+            <div class="space-y-2.5 text-xs flex-1">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <span class="text-slate-600">Terminées</span>
+                </div>
+                <span class="font-bold text-slate-900">{{ stats.tasks_completed|default(0) }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                  <span class="text-slate-600">En cours</span>
+                </div>
+                <span class="font-bold text-slate-900">{{ stats.tasks_in_progress|default(0) }}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                  <span class="text-slate-600">En retard</span>
+                </div>
+                <span class="font-bold text-slate-900">{{ stats.tasks_late|default(0) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Évolution de l'activité (Line Chart) -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-blue-600">📈</span>
+              <h2 class="text-sm font-bold text-slate-900">Évolution de l'activité</h2>
+            </div>
+            <div class="flex items-center gap-3 text-[11px]">
+              <span class="flex items-center gap-1.5 text-blue-600 font-medium">
+                <span class="w-2 h-2 rounded-full bg-blue-600"></span> Tâches réalisées
+              </span>
+              <span class="flex items-center gap-1.5 text-slate-400">
+                <span class="w-2 h-2 rounded-full bg-slate-300"></span> Tâches prévues
+              </span>
+            </div>
+          </div>
+
+          <div class="relative h-44 mt-3">
+            <canvas id="teamsChart"></canvas>
+          </div>
+        </div>
+
+        <!-- 3. Rapports -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-blue-600">📄</span>
+              <h2 class="text-sm font-bold text-slate-900">Rapports</h2>
+            </div>
+            <a href="{{ url_for('reports.list_reports') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Voir tous les rapports &rarr;
+            </a>
+          </div>
+
+          <div class="divide-y divide-slate-50 mt-2">
+            {% for rep in recent_reports %}
+            <div class="py-3 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                </div>
+                <div class="min-w-0">
+                  <div class="text-xs font-bold text-slate-900 truncate">{{ rep.title }}</div>
+                  <div class="text-[11px] text-slate-400 truncate">{{ rep.period }}</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold
+                  {% if rep.status == 'valide' %}bg-emerald-100 text-emerald-800
+                  {% elif rep.status == 'soumis' %}bg-blue-100 text-blue-800
+                  {% else %}bg-amber-100 text-amber-800{% endif %}">
+                  {{ rep.status|capitalize }}
+                </span>
+                <a href="{{ rep.url }}" class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 flex items-center gap-1">
+                  <span>👁</span> Voir
+                </a>
+              </div>
+            </div>
+            {% else %}
+            <div class="text-xs text-slate-400 py-3">Aucun rapport récent.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- 4. Prochaines échéances -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+              <span class="text-blue-600">📅</span>
+              <h2 class="text-sm font-bold text-slate-900">Prochaines échéances</h2>
+            </div>
+            <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              Voir toutes les échéances &rarr;
+            </a>
+          </div>
+
+          <div class="divide-y divide-slate-50 mt-2">
+            {% for ud in upcoming_deadlines %}
+            <div class="py-3 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-800 flex flex-col items-center justify-center shrink-0 leading-none">
+                  <span class="text-xs font-extrabold">{{ ud.due_date.day if ud.due_date else '15' }}</span>
+                  <span class="text-[9px] uppercase font-semibold text-slate-400">{{ ud.due_date.strftime('%b') if ud.due_date else 'Nov.' }}</span>
+                </div>
+                <div class="min-w-0">
+                  <div class="text-xs font-bold text-slate-900 truncate">{{ ud.title }}</div>
+                  <div class="text-[11px] text-slate-400 truncate">{{ ud.responsible.full_name if ud.responsible else 'Non assigné' }}</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold shrink-0
+                {% if ud.is_late(today) %}bg-rose-100 text-rose-800
+                {% elif ud.status.value == 'en_cours' %}bg-amber-100 text-amber-800
+                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                {{ 'En retard' if ud.is_late(today) else (ud.status.value|capitalize) }}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  <!-- ========================================================================= -->
+  <!-- 2. DASHBOARD CHEF D'ÉQUIPE (chief_team_dashbord.png)                       -->
+  <!-- ========================================================================= -->
+  {% elif supervised_teams %}
+
+    <!-- Bannière Équipe & 4 Cartes KPIs Pastel -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xl">
+          👥
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-slate-900">{{ supervised_teams[0].name }}</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Équipes sous votre supervision : {{ supervised_teams|map(attribute='name')|join(', ') }}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700">
+          <span>👥</span>
+          <span>{{ stats.team_members_count|default(5) }} membres dans votre équipe</span>
+        </div>
+        <a href="{{ url_for('teams.list_teams') }}" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors">
+          Voir l'équipe &rarr;
+        </a>
+      </div>
+    </div>
+
+    <!-- 4 KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">✓</div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900">{{ stats.team_tasks_total|default(stats.tasks_total) }}</div>
+              <div class="text-xs font-medium text-slate-500">Tâches totales</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-emerald-600 mt-3">↑ +7% vs semaine dernière</div>
+        </div>
+      </div>
+
+      <div class="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">✓</div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900">{{ stats.team_tasks_completed|default(stats.tasks_completed) }}</div>
+              <div class="text-xs font-medium text-slate-500">Tâches terminées</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-emerald-600 mt-3">↑ 63%</div>
+        </div>
+      </div>
+
+      <div class="bg-amber-50/70 border border-amber-100 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold">🕒</div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900">{{ stats.team_tasks_in_progress|default(stats.tasks_in_progress) }}</div>
+              <div class="text-xs font-medium text-slate-500">Tâches en cours</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-amber-600 mt-3">↑ 25%</div>
+        </div>
+      </div>
+
+      <div class="bg-rose-50/70 border border-rose-100 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold">!</div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900">{{ stats.team_tasks_late|default(stats.tasks_late) }}</div>
+              <div class="text-xs font-medium text-slate-500">Tâches en retard</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-rose-600 mt-3">↑ 12%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 Cartes de Supervision Synthétique (Progression, Donut, Évolution) -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Progression de l'équipe (Supervision individuelle) -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="text-blue-600">📊</span>
+            <h2 class="text-sm font-bold text-slate-900">Supervision individuelle de l'équipe</h2>
+          </div>
+          <a href="{{ url_for('teams.list_teams') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Voir les détails &rarr;</a>
+        </div>
+        <div class="divide-y divide-slate-50 mt-2">
+          {% for mp in members_progress[:5] %}
+          <div class="py-2.5 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 min-w-0 w-36">
+              <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                {{ mp.initials }}
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-semibold text-slate-900 truncate">{{ mp.full_name }}</div>
+                <div class="text-[10px] text-slate-400 truncate">@{{ mp.username }} &bull; {{ mp.function or 'Membre' }}</div>
+              </div>
+            </div>
+            <div class="flex-1 flex items-center gap-2">
+              <div class="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div class="h-2 rounded-full bg-blue-600" style="width: {{ mp.avg_progress }}%"></div>
+              </div>
+              <span class="text-xs font-bold text-slate-700 w-8 text-right">{{ mp.avg_progress }}%</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Répartition des tâches de l'équipe -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="text-blue-600">👥</span>
+            <h2 class="text-sm font-bold text-slate-900">Répartition des tâches</h2>
+          </div>
+        </div>
+        <div class="flex items-center justify-between gap-4 mt-4">
+          <div class="relative w-32 h-32 shrink-0 flex items-center justify-center">
+            <canvas id="donutStatusChartTeam"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-lg font-extrabold text-slate-900 leading-none">{{ stats.team_tasks_total|default(16) }}</span>
+              <span class="text-[9px] text-slate-400 mt-0.5">tâches</span>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs flex-1">
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Terminées</span>
+              <span class="font-bold">{{ stats.team_tasks_completed|default(10) }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-600"></span> En cours</span>
+              <span class="font-bold">{{ stats.team_tasks_in_progress|default(4) }}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> En retard</span>
+              <span class="font-bold">{{ stats.team_tasks_late|default(2) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Évolution de la progression de l'équipe -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2">
+            <span class="text-blue-600">📈</span>
+            <h2 class="text-sm font-bold text-slate-900">Évolution équipe</h2>
+          </div>
+        </div>
+        <div class="relative h-28 my-2">
+          <canvas id="evolutionChartTeam"></canvas>
+        </div>
+        <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 text-center">
+          <div>
+            <div class="text-xs font-extrabold text-emerald-600">75%</div>
+            <div class="text-[10px] text-slate-400">Progression moy.</div>
+          </div>
+          <div>
+            <div class="text-xs font-extrabold text-blue-600">{{ stats.team_tasks_completed|default(10) }}</div>
+            <div class="text-[10px] text-slate-400">Terminées</div>
+          </div>
+          <div>
+            <div class="text-xs font-extrabold text-slate-700">6 jours</div>
+            <div class="text-[10px] text-slate-400">Délai moyen</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Tâches & Rapports de l'équipe -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div class="lg:col-span-8 space-y-6">
+        <!-- Tâches de l'équipe cette semaine -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span>🎯</span>
+              <span>Tâches de l'équipe cette semaine</span>
+            </h2>
+            <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Voir toutes les tâches &rarr;</a>
+          </div>
+          <div class="overflow-x-auto mt-2">
+            <table class="w-full text-xs">
+              <thead class="text-slate-400 border-b border-slate-100 text-left font-medium">
+                <tr>
+                  <th class="py-2.5">Titre</th>
+                  <th class="py-2.5">Membre(s)</th>
+                  <th class="py-2.5">Échéance</th>
+                  <th class="py-2.5">Statut</th>
+                  <th class="py-2.5">Progression</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-50">
+                {% for pt in priority_tasks %}
+                <tr>
+                  <td class="py-3 font-semibold text-slate-900">{{ pt.title }}</td>
+                  <td class="py-3 text-slate-600">{{ pt.responsible.full_name if pt.responsible else '-' }}</td>
+                  <td class="py-3 text-slate-500">{{ pt.due_date.strftime('%d %b.') if pt.due_date else '-' }}</td>
+                  <td class="py-3">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold
+                      {% if pt.status.value == 'terminee' %}bg-emerald-100 text-emerald-800
+                      {% elif pt.is_late(today) %}bg-rose-100 text-rose-800
+                      {% else %}bg-blue-100 text-blue-800{% endif %}">
+                      {{ 'En retard' if pt.is_late(today) else pt.status.value|capitalize }}
+                    </span>
+                  </td>
+                  <td class="py-3 w-28">
+                    <div class="flex items-center gap-2">
+                      <div class="flex-1 bg-slate-100 rounded-full h-1.5">
+                        <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ pt.progress|round(0)|int }}%"></div>
+                      </div>
+                      <span class="font-bold text-slate-700">{{ pt.progress|round(0)|int }}%</span>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Rapports de l'équipe -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span>📄</span>
+              <span>Rapports de l'équipe</span>
+            </h2>
+            <a href="{{ url_for('reports.list_reports') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Voir tous les rapports &rarr;</a>
+          </div>
+          <div class="divide-y divide-slate-50 mt-2">
+            {% for mp in members_progress[:3] %}
+            <div class="py-3 flex items-center justify-between gap-4 text-xs">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center">
+                  {{ mp.initials }}
+                </div>
+                <div>
+                  <div class="font-bold text-slate-900">{{ mp.full_name }}</div>
+                  <div class="text-[11px] text-slate-400">Rapport hebdomadaire</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold
+                  {% if mp.report_status == 'valide' %}bg-emerald-100 text-emerald-800
+                  {% elif mp.report_status == 'soumis' %}bg-amber-100 text-amber-800
+                  {% else %}bg-slate-100 text-slate-700{% endif %}">
+                  {{ mp.report_status|capitalize }}
+                </span>
+                <a href="{{ url_for('reports.list_reports') }}" class="px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                  👁 Voir
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Colonne Droite Équipe -->
+      <div class="lg:col-span-4 space-y-6">
+        <!-- Activités récentes -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h2 class="text-sm font-bold text-slate-900">Activités récentes</h2>
+          </div>
+          <div class="mt-4 space-y-4 relative before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
+            {% for act in recent_activities[:4] %}
+            <div class="flex items-start gap-4 relative">
+              <div class="w-4 h-4 rounded-full bg-white border-4 border-blue-600 shrink-0 z-10"></div>
+              <div class="flex-1 flex items-center justify-between gap-2 text-xs">
+                <span class="text-slate-700 font-medium">{{ act.text }}</span>
+                <span class="text-slate-400 text-[10px] shrink-0">{{ act.time }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Prochaines échéances importantes -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h2 class="text-sm font-bold text-slate-900">Prochaines échéances</h2>
+          </div>
+          <div class="divide-y divide-slate-50 mt-2">
+            {% for ud in upcoming_deadlines[:3] %}
+            <div class="py-3 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-slate-100 text-slate-800 flex flex-col items-center justify-center leading-none">
+                  <span class="text-xs font-extrabold">{{ ud.due_date.day if ud.due_date else '15' }}</span>
+                  <span class="text-[9px] uppercase font-semibold text-slate-400">{{ ud.due_date.strftime('%b') if ud.due_date else 'Nov.' }}</span>
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-slate-900">{{ ud.title }}</div>
+                  <div class="text-[11px] text-slate-400">{{ ud.responsible.full_name if ud.responsible else '' }}</div>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold
+                {% if ud.is_late(today) %}bg-rose-100 text-rose-800
+                {% else %}bg-blue-100 text-blue-800{% endif %}">
+                {{ 'En retard' if ud.is_late(today) else 'En cours' }}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+    </div>
+
+    <!-- Mes équipes -->
+    {% if user.team_links %}
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900">Mes équipes</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Équipes du département auxquelles vous êtes affecté(e).</p>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+        {% for link in user.team_links %}
+        <div class="p-4 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="font-bold text-slate-900 text-xs">{{ link.team.name }}</div>
+          <div class="text-[11px] text-slate-500 mt-1">
+            {% if link.is_team_lead %}<span class="text-blue-600 font-semibold">Chef d'équipe</span>{% else %}<span class="text-slate-500">Membre</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+  <!-- ========================================================================= -->
+  <!-- 3. DASHBOARD COLLABORATEUR / MEMBRE (member_dashbord.png)                  -->
+  <!-- ========================================================================= -->
+  {% else %}
+
+    <!-- 4 Cartes KPIs Pastel Collaborateur -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-blue-50/70 border border-blue-100 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">✓</div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900">{{ stats.tasks_total|default(0) }}</div>
+              <div class="text-xs font-medium text-slate-500">Mes tâches</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-emerald-600 mt-3">↑ +2 cette semaine</div>
+        </div>
+      </div>
+
+      <div class="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">✓</div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900">{{ stats.tasks_completed|default(0) }}</div>
+              <div class="text-xs font-medium text-slate-500">Tâches terminées</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-emerald-600 mt-3">{{ completion_rate }}% de réalisation</div>
+        </div>
+      </div>
+
+      <div class="bg-amber-50/70 border border-amber-100 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold">🕒</div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900">{{ stats.tasks_in_progress|default(0) }}</div>
+              <div class="text-xs font-medium text-slate-500">Tâches en cours</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-amber-600 mt-3">25% de réalisation</div>
+        </div>
+      </div>
+
+      <div class="bg-rose-50/70 border border-rose-100 rounded-2xl p-5 flex items-center justify-between shadow-sm">
+        <div>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold">!</div>
+            <div>
+              <div class="text-2xl font-extrabold text-slate-900">{{ stats.tasks_late|default(0) }}</div>
+              <div class="text-xs font-medium text-slate-500">Tâche en retard</div>
+            </div>
+          </div>
+          <div class="text-xs font-semibold text-rose-600 mt-3">13% de réalisation</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mes tâches de la semaine + Mon agenda -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Mes tâches de la semaine (8 / 12) -->
+      <div class="lg:col-span-8 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span>📋</span>
+            <span>Mes tâches de la semaine</span>
+          </h2>
+          <a href="{{ url_for('tasks.list_tasks') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Voir toutes mes tâches &rarr;</a>
+        </div>
+        <div class="overflow-x-auto mt-2">
+          <table class="w-full text-xs">
+            <thead class="text-slate-400 border-b border-slate-100 text-left font-medium">
+              <tr>
+                <th class="py-2.5">Titre de la tâche</th>
+                <th class="py-2.5">Échéance</th>
+                <th class="py-2.5">Statut</th>
+                <th class="py-2.5">Progression</th>
+                <th class="py-2.5 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+              {% for t in recent_tasks %}
+              <tr>
+                <td class="py-3">
+                  <div class="font-bold text-slate-900">{{ t.title }}</div>
+                  <div class="text-[11px] text-slate-400">{{ t.team.name if t.team else '' }}</div>
+                </td>
+                <td class="py-3 text-slate-500">{{ t.due_date.strftime('%d %b. %Y') if t.due_date else '-' }}</td>
+                <td class="py-3">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-semibold
+                    {% if t.status.value == 'terminee' %}bg-emerald-100 text-emerald-800
+                    {% elif t.is_late(today) %}bg-rose-100 text-rose-800
+                    {% else %}bg-blue-100 text-blue-800{% endif %}">
+                    {{ 'En retard' if t.is_late(today) else t.status.value|capitalize }}
+                  </span>
+                </td>
+                <td class="py-3 w-28">
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 bg-slate-100 rounded-full h-1.5">
+                      <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ t.progress|round(0)|int }}%"></div>
+                    </div>
+                    <span class="font-bold text-slate-700">{{ t.progress|round(0)|int }}%</span>
+                  </div>
+                </td>
+                <td class="py-3 text-right">
+                  <a href="{{ url_for('tasks.view_task', task_id=t.id) }}" class="inline-flex items-center gap-1 px-3 py-1 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 font-medium text-xs">
+                    <span>✏️</span> Mettre à jour
+                  </a>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="5" class="py-6 text-center text-slate-400">Aucune tâche en cours pour cette semaine.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Mon agenda (4 / 12) -->
+      <div class="lg:col-span-4 bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span>📅</span>
+            <span>Mon agenda</span>
+          </h2>
+          <a href="{{ url_for('calendar.calendar_view') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Voir tout le calendrier &rarr;</a>
+        </div>
+        
+        <!-- Sélecteur jours semaine -->
+        <div class="flex items-center justify-between gap-1 py-3 border-b border-slate-100 text-center">
+          <div class="p-1.5 rounded-xl text-xs text-slate-500 hover:bg-slate-50 cursor-pointer">
+            <span class="text-[10px] block">Lun</span>
+            <span class="font-bold">11</span>
+          </div>
+          <div class="p-1.5 rounded-xl text-xs bg-blue-600 text-white font-bold cursor-pointer shadow-md shadow-blue-500/20">
+            <span class="text-[10px] block">Mar</span>
+            <span>12</span>
+          </div>
+          <div class="p-1.5 rounded-xl text-xs text-slate-500 hover:bg-slate-50 cursor-pointer">
+            <span class="text-[10px] block">Mer</span>
+            <span class="font-bold">13</span>
+          </div>
+          <div class="p-1.5 rounded-xl text-xs text-slate-500 hover:bg-slate-50 cursor-pointer">
+            <span class="text-[10px] block">Jeu</span>
+            <span class="font-bold">14</span>
+          </div>
+          <div class="p-1.5 rounded-xl text-xs text-slate-500 hover:bg-slate-50 cursor-pointer">
+            <span class="text-[10px] block">Ven</span>
+            <span class="font-bold">15</span>
+          </div>
+        </div>
+
+        <!-- Timeline journalière -->
+        <div class="space-y-3 mt-3">
+          <div class="flex items-start gap-3 text-xs">
+            <span class="font-mono text-slate-400 w-10 shrink-0">09:00</span>
+            <div class="flex-1 bg-blue-50/70 border-l-2 border-blue-600 p-2 rounded-r-lg">
+              <div class="font-bold text-slate-900">Rapprochement bancaire</div>
+              <div class="text-[11px] text-slate-500">Mise à jour des relevés</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 text-xs">
+            <span class="font-mono text-slate-400 w-10 shrink-0">11:00</span>
+            <div class="flex-1 bg-emerald-50/70 border-l-2 border-emerald-600 p-2 rounded-r-lg">
+              <div class="font-bold text-slate-900">Traitement factures fournisseurs</div>
+              <div class="text-[11px] text-slate-500">Saisie et contrôle</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 text-xs">
+            <span class="font-mono text-slate-400 w-10 shrink-0">14:00</span>
+            <div class="flex-1 bg-amber-50/70 border-l-2 border-amber-500 p-2 rounded-r-lg">
+              <div class="font-bold text-slate-900">Réunion équipe comptabilité</div>
+              <div class="text-[11px] text-slate-500">Point d'avancement</div>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 text-xs">
+            <span class="font-mono text-slate-400 w-10 shrink-0">16:00</span>
+            <div class="flex-1 bg-indigo-50/70 border-l-2 border-indigo-600 p-2 rounded-r-lg">
+              <div class="font-bold text-slate-900">Préparation déclaration TVA</div>
+              <div class="text-[11px] text-slate-500">Collecte des données</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 3 Cartes (Progression Donut, Répartition Temps, Dernier Rapport) -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Ma progression cette semaine -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <span>📊</span>
+          <span>Ma progression cette semaine</span>
+        </h2>
+        <div class="flex items-center justify-between gap-4 my-3">
+          <div class="relative w-28 h-28 shrink-0 flex items-center justify-center">
+            <canvas id="memberProgressionChart"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-base font-extrabold text-slate-900">{{ completion_rate }}%</span>
+              <span class="text-[8px] text-slate-400">Réalisé</span>
+            </div>
+          </div>
+          <div class="space-y-1.5 text-xs flex-1">
+            <div class="flex items-center justify-between"><span class="text-slate-600">✓ Terminées</span><span class="font-bold">{{ stats.tasks_completed|default(0) }}</span></div>
+            <div class="flex items-center justify-between"><span class="text-slate-600">🕒 En cours</span><span class="font-bold">{{ stats.tasks_in_progress|default(0) }}</span></div>
+            <div class="flex items-center justify-between"><span class="text-slate-600">! En retard</span><span class="font-bold">{{ stats.tasks_late|default(0) }}</span></div>
+            <div class="flex items-center justify-between border-t border-slate-100 pt-1"><span class="text-slate-900 font-semibold">Total</span><span class="font-bold">{{ stats.tasks_total|default(0) }}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Répartition de mon temps -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+          <span>🕒</span>
+          <span>Répartition de mon temps</span>
+        </h2>
+        <div class="flex items-center justify-between gap-4 my-3">
+          <div class="relative w-28 h-28 shrink-0 flex items-center justify-center">
+            <canvas id="memberTimeChart"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span class="text-sm font-extrabold text-slate-900">24h</span>
+              <span class="text-[8px] text-slate-400">cette semaine</span>
+            </div>
+          </div>
+          <div class="space-y-1.5 text-xs flex-1">
+            <div class="flex items-center justify-between"><span class="text-slate-600">Tâches planifiées</span><span class="font-bold">10h</span></div>
+            <div class="flex items-center justify-between"><span class="text-slate-600">Activités imprévues</span><span class="font-bold">6h</span></div>
+            <div class="flex items-center justify-between"><span class="text-slate-600">Réunions</span><span class="font-bold">5h</span></div>
+            <div class="flex items-center justify-between"><span class="text-slate-600">Autres</span><span class="font-bold">3h</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mon dernier rapport -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span>📄</span>
+            <span>Mon dernier rapport</span>
+          </h2>
+          <a href="{{ url_for('reports.list_reports') }}" class="text-xs font-semibold text-blue-600 hover:text-blue-700">Voir mes rapports &rarr;</a>
+        </div>
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-100 my-2">
+          <div class="flex items-center justify-between">
+            <div class="text-xs font-bold text-slate-900">Rapport hebdomadaire</div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+              {{ my_weekly_report.status.value|capitalize if my_weekly_report else 'Initialisé' }}
+            </span>
+          </div>
+          <div class="text-[11px] text-slate-400 mt-1">Semaine du {{ week_start.strftime('%d/%m') }} au {{ week_end.strftime('%d/%m/%Y') }}</div>
+        </div>
+        <div>
+          {% if my_weekly_report %}
+          <a href="{{ url_for('reports.detail_report', id=my_weekly_report.id) }}" class="w-full flex justify-center py-2 px-3 rounded-xl border border-slate-200 text-slate-800 hover:bg-slate-50 font-bold text-xs">
+            👁 Voir le rapport
+          </a>
           {% else %}
-          <span class="rounded-full bg-slate-200 text-slate-700 px-2 py-0.5 text-xs font-medium">
-            Membre
-          </span>
+          <form method="post" action="{{ url_for('reports.generate_current_report') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="w-full py-2 px-3 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700">
+              Initialiser mon rapport &rarr;
+            </button>
+          </form>
           {% endif %}
         </div>
       </div>
-      {% else %}
-      <div class="col-span-full py-6 text-center text-slate-400 text-sm">
-        Vous n'êtes actuellement affecté(e) à aucune équipe.
+
+    <!-- Mes équipes -->
+    {% if user.team_links %}
+    <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+      <div class="border-b border-slate-100 pb-3">
+        <h2 class="text-sm font-bold text-slate-900">Mes équipes</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Équipes du département auxquelles vous êtes affecté(e).</p>
       </div>
-      {% endfor %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mt-4">
+        {% for link in user.team_links %}
+        <div class="p-4 rounded-xl border border-slate-100 bg-slate-50/60">
+          <div class="font-bold text-slate-900 text-xs">{{ link.team.name }}</div>
+          <div class="text-[11px] text-slate-500 mt-1">
+            {% if link.is_team_lead %}<span class="text-blue-600 font-semibold">Chef d'équipe</span>{% else %}<span class="text-slate-500">Membre</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
     </div>
-  </div>
+    {% endif %}
+
+    </div>
+
+  {% endif %}
+
 </div>
 
-<!-- Initialisation des Graphiques Chart.js -->
-{% if chart_status_data and chart_teams_data and (user.is_chef_service() or supervised_teams) %}
+<!-- Scripts d'initialisation des graphiques Chart.js -->
 <script>
   document.addEventListener("DOMContentLoaded", function() {
-    // 1. Doughnut Chart des Statuts
-    const ctxStatus = document.getElementById('statusChart');
-    if (ctxStatus) {
-      new Chart(ctxStatus, {
+    // 1. Doughnut Chef de Service
+    const ctxDonut = document.getElementById('statusChart');
+    if (ctxDonut) {
+      new Chart(ctxDonut, {
         type: 'doughnut',
         data: {
-          labels: {{ chart_status_data.labels | tojson }},
+          labels: ['Terminées', 'En cours', 'En retard'],
           datasets: [{
-            data: {{ chart_status_data.counts | tojson }},
-            backgroundColor: [
-              '#94A3B8', // À faire (slate-400)
-              '#3B82F6', // En cours (blue-500)
-              '#F59E0B', // À valider (amber-500)
-              '#10B981', // Terminée (emerald-500)
-              '#EF4444', // Bloquée (red-500)
-              '#8B5CF6', // Reportée (purple-500)
-              '#6B7280', // Annulée (gray-500)
+            data: [
+              {{ stats.tasks_completed|default(18) }},
+              {{ stats.tasks_in_progress|default(7) }},
+              {{ stats.tasks_late|default(3) }}
             ],
+            backgroundColor: ['#10B981', '#2563EB', '#EF4444'],
+            cutout: '72%',
             borderWidth: 2,
             borderColor: '#FFFFFF'
           }]
@@ -476,47 +1120,137 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'right',
-              labels: { boxWidth: 12, font: { size: 11 } }
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    // 2. Line Chart Évolution Chef de Service
+    const ctxEvolution = document.getElementById('teamsChart');
+    if (ctxEvolution) {
+      new Chart(ctxEvolution, {
+        type: 'line',
+        data: {
+          labels: {{ chart_evolution_data.labels | tojson if chart_evolution_data and chart_evolution_data.labels else '["Lun 11", "Mar 12", "Mer 13", "Jeu 14", "Ven 15", "Sam 16", "Dim 17"]' }},
+          datasets: [
+            {
+              label: 'Tâches réalisées',
+              data: {{ chart_evolution_data.realized | tojson if chart_evolution_data and chart_evolution_data.realized else '[3, 10, 8, 12, 17, 17, 10]' }},
+              borderColor: '#2563EB',
+              backgroundColor: '#2563EB',
+              tension: 0.3,
+              pointRadius: 4,
+              borderWidth: 2
+            },
+            {
+              label: 'Tâches prévues',
+              data: {{ chart_evolution_data.planned | tojson if chart_evolution_data and chart_evolution_data.planned else '[4, 6, 6, 7, 10, 10, 12]' }},
+              borderColor: '#CBD5E1',
+              backgroundColor: '#CBD5E1',
+              tension: 0.3,
+              pointRadius: 3,
+              borderWidth: 2,
+              borderDash: [4, 4]
             }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { font: { size: 10 } } },
+            x: { grid: { display: false }, ticks: { font: { size: 10 } } }
           }
         }
       });
     }
 
-    // 2. Bar Chart de l'Avancement par Équipe
-    const ctxTeams = document.getElementById('teamsChart');
-    if (ctxTeams) {
-      new Chart(ctxTeams, {
-        type: 'bar',
+    // 3. Doughnut Chef d'Équipe
+    const ctxDonutTeam = document.getElementById('donutStatusChartTeam');
+    if (ctxDonutTeam) {
+      new Chart(ctxDonutTeam, {
+        type: 'doughnut',
         data: {
-          labels: {{ chart_teams_data.labels | tojson }},
+          labels: ['Terminées', 'En cours', 'En retard'],
           datasets: [{
-            label: 'Avancement moyen (%)',
-            data: {{ chart_teams_data.progress | tojson }},
+            data: [
+              {{ stats.team_tasks_completed|default(10) }},
+              {{ stats.team_tasks_in_progress|default(4) }},
+              {{ stats.team_tasks_late|default(2) }}
+            ],
+            backgroundColor: ['#10B981', '#2563EB', '#EF4444'],
+            cutout: '72%',
+            borderWidth: 2,
+            borderColor: '#FFFFFF'
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    // 4. Line Chart Chef d'Équipe
+    const ctxEvolutionTeam = document.getElementById('evolutionChartTeam');
+    if (ctxEvolutionTeam) {
+      new Chart(ctxEvolutionTeam, {
+        type: 'line',
+        data: {
+          labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+          datasets: [{
+            label: 'Progression',
+            data: [25, 45, 50, 65, 70, 78, 75],
+            borderColor: '#2563EB',
             backgroundColor: '#2563EB',
-            borderRadius: 6,
+            tension: 0.3,
+            pointRadius: 3,
+            borderWidth: 2
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: {
-            y: {
-              beginAtZero: true,
-              max: 100,
-              ticks: { callback: function(value) { return value + "%"; } }
-            }
-          },
-          plugins: {
-            legend: { display: false }
-          }
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, max: 100, display: false }, x: { grid: { display: false } } }
         }
+      });
+    }
+
+    // 5. Member Progression Chart
+    const ctxMemberProg = document.getElementById('memberProgressionChart');
+    if (ctxMemberProg) {
+      new Chart(ctxMemberProg, {
+        type: 'doughnut',
+        data: {
+          labels: ['Réalisé', 'Restant'],
+          datasets: [{
+            data: [{{ completion_rate }}, {{ 100 - completion_rate if completion_rate < 100 else 0 }}],
+            backgroundColor: ['#10B981', '#E2E8F0'],
+            cutout: '76%',
+            borderWidth: 0
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+      });
+    }
+
+    // 6. Member Time Chart
+    const ctxMemberTime = document.getElementById('memberTimeChart');
+    if (ctxMemberTime) {
+      new Chart(ctxMemberTime, {
+        type: 'doughnut',
+        data: {
+          labels: ['Tâches planifiées', 'Activités imprévues', 'Réunions', 'Autres'],
+          datasets: [{
+            data: [10, 6, 5, 3],
+            backgroundColor: ['#10B981', '#3B82F6', '#F59E0B', '#8B5CF6'],
+            cutout: '72%',
+            borderWidth: 2,
+            borderColor: '#FFFFFF'
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
       });
     }
   });
 </script>
-{% endif %}
 {% endblock %}

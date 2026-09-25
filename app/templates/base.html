@@ -1,61 +1,295 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" class="h-full bg-slate-50">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Suivi des activités{% endblock %}</title>
+  <title>{% block title %}Z_Activités - Suivi des activités{% endblock %}</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              navy: '#0B132B',
+              sidebar: '#0F172A',
+              blue: '#2563EB',
+              lightblue: '#EFF6FF',
+              emerald: '#10B981',
+              lightgreen: '#ECFDF5',
+              amber: '#F59E0B',
+              lightamber: '#FFFBEB',
+              rose: '#EF4444',
+              lightrose: '#FEF2F2',
+            }
+          }
+        }
+      }
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    /* Scrollbar personnalisée douce */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+  </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="h-full text-slate-800 bg-[#F8FAFC] antialiased">
   {% if current_user.is_authenticated %}
-  <nav class="bg-white border-b border-slate-200">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="{{ url_for('dashboard.index') }}" class="font-semibold text-slate-900">Suivi des activités</a>
-      <div class="flex items-center gap-4 text-sm">
-        <a href="{{ url_for('tasks.list_tasks') }}" class="hover:underline font-medium text-slate-700">Tâches</a>
-        <a href="{{ url_for('activities.list_activities') }}" class="hover:underline font-medium text-slate-700">Activités imprévues</a>
-        <a href="{{ url_for('reports.list_reports') }}" class="hover:underline font-medium text-slate-700">Rapports hebdos</a>
-        <a href="{{ url_for('monthly_reports.list_monthly_reports') }}" class="hover:underline font-medium text-slate-700">Rapports mensuels</a>
-        <a href="{{ url_for('history.search_history') }}" class="hover:underline font-medium text-slate-700">Historique</a>
-        {% if current_user.is_chef_service() %}
-        <a href="{{ url_for('users.list_users') }}" class="hover:underline">Utilisateurs</a>
-        <a href="{{ url_for('teams.list_teams') }}" class="hover:underline">Équipes</a>
-        <a href="{{ url_for('audit.list_audit_logs') }}" class="hover:underline">Audit</a>
-        {% endif %}
-        <!-- Cloche de notifications (CDC Section 23) -->
-        <a href="{{ url_for('notifications.list_notifications') }}"
-           class="relative inline-flex items-center text-slate-700 hover:text-slate-900 font-medium p-1"
-           title="Notifications">
-          <span class="text-base">🔔</span>
-          {% if unread_notifications_count and unread_notifications_count > 0 %}
-          <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[9px] font-bold leading-none text-white bg-rose-600 rounded-full shadow-sm">
-            {{ unread_notifications_count if unread_notifications_count < 100 else '99+' }}
-          </span>
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar Latérale Gauche Fixe (Thème Sombre #0B132B / #0F172A) -->
+    <aside class="w-64 bg-[#0B132B] text-slate-300 flex flex-col justify-between shrink-0 select-none border-r border-slate-800/80 z-20">
+      <div class="flex flex-col h-full overflow-y-auto">
+        <!-- Logo & Titre de Marque -->
+        <div class="p-5 pb-6 border-b border-slate-800/60">
+          <a href="{{ url_for('dashboard.index') }}" class="flex items-center gap-3 group">
+            <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/25 group-hover:scale-105 transition-transform">
+              <!-- Icône barres statistiques montantes -->
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="3" y="13" width="4" height="8" rx="1.5" />
+                <rect x="10" y="8" width="4" height="13" rx="1.5" />
+                <rect x="17" y="3" width="4" height="18" rx="1.5" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-white font-bold text-lg tracking-tight leading-tight">Z_Activités</div>
+              <div class="text-slate-400 text-xs">Suivi des activités</div>
+            </div>
+          </a>
+        </div>
+
+        <!-- Navigation Principale -->
+        <nav class="flex-1 px-3 py-4 space-y-1.5 text-sm font-medium">
+          <!-- 1. Tableau de bord -->
+          <a href="{{ url_for('dashboard.index') }}"
+             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {% if request.endpoint == 'dashboard.index' %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <svg class="w-5 h-5 {% if request.endpoint == 'dashboard.index' %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+            </svg>
+            <span>Tableau de bord</span>
+          </a>
+
+          <!-- 2. Équipes / Mon équipe -->
+          <a href="{{ url_for('teams.list_teams') }}"
+             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {% if request.blueprint == 'teams' %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <svg class="w-5 h-5 {% if request.blueprint == 'teams' %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            <span>{% if current_user.is_chef_service() %}Équipes{% elif current_user.is_any_team_lead() %}Mon équipe{% else %}Mes équipes{% endif %}</span>
+          </a>
+
+          <!-- 3. Tâches -->
+          <a href="{{ url_for('tasks.list_tasks') }}"
+             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {% if request.blueprint == 'tasks' %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <svg class="w-5 h-5 {% if request.blueprint == 'tasks' %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+            </svg>
+            <span>{% if current_user.is_chef_service() or current_user.is_any_team_lead() %}Tâches{% else %}Mes tâches{% endif %}</span>
+          </a>
+
+          <!-- 4. Activités imprévues -->
+          <a href="{{ url_for('activities.list_activities') }}"
+             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {% if request.blueprint == 'activities' %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <svg class="w-5 h-5 {% if request.blueprint == 'activities' %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            <span>{% if current_user.is_chef_service() or current_user.is_any_team_lead() %}Activités imprévues{% else %}Mes activités{% endif %}</span>
+          </a>
+
+          <!-- 5. Rapports -->
+          <a href="{{ url_for('reports.list_reports') }}"
+             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {% if request.blueprint in ['reports', 'monthly_reports'] %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <svg class="w-5 h-5 {% if request.blueprint in ['reports', 'monthly_reports'] %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <span>{% if current_user.is_chef_service() or current_user.is_any_team_lead() %}Rapports{% else %}Mes rapports{% endif %}</span>
+          </a>
+
+          <!-- 6. Calendrier -->
+          <a href="{{ url_for('calendar.calendar_view') }}"
+             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {% if request.blueprint == 'calendar' %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <svg class="w-5 h-5 {% if request.blueprint == 'calendar' %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <span>Calendrier</span>
+          </a>
+
+          <!-- 7. Utilisateurs (Chef de service uniquement) -->
+          {% if current_user.is_chef_service() %}
+          <a href="{{ url_for('users.list_users') }}"
+             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {% if request.blueprint == 'users' %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <svg class="w-5 h-5 {% if request.blueprint == 'users' %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+            </svg>
+            <span>Utilisateurs</span>
+          </a>
           {% endif %}
-        </a>
-        <span class="text-slate-500 font-medium">{{ current_user.full_name }}</span>
-        <form method="post" action="{{ url_for('auth.logout') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit" class="text-slate-500 hover:text-slate-900">Déconnexion</button>
-        </form>
+
+          <!-- 8. Notifications -->
+          <a href="{{ url_for('notifications.list_notifications') }}"
+             class="flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-colors {% if request.blueprint == 'notifications' %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 {% if request.blueprint == 'notifications' %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              <span>Notifications</span>
+            </div>
+            {% if unread_notifications_count and unread_notifications_count > 0 %}
+            <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-rose-500 rounded-full shadow-sm">
+              {{ unread_notifications_count if unread_notifications_count < 100 else '99+' }}
+            </span>
+            {% endif %}
+          </a>
+
+          <!-- 9. Paramètres -->
+          <a href="{{ url_for('settings.settings_view') }}"
+             class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors {% if request.blueprint == 'settings' %}bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20{% else %}text-slate-300 hover:bg-slate-800/60 hover:text-white{% endif %}">
+            <svg class="w-5 h-5 {% if request.blueprint == 'settings' %}text-white{% else %}text-slate-400{% endif %}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            <span>Paramètres</span>
+          </a>
+        </nav>
+
+        <!-- Pied de Sidebar : Carte Profil Utilisateur Connecté -->
+        <div class="p-3 border-t border-slate-800/80 bg-slate-900/40">
+          <div class="flex items-center justify-between p-2 rounded-xl hover:bg-slate-800/50 transition-colors">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-bold flex items-center justify-center text-sm shadow-md shrink-0">
+                {{ current_user.initials }}
+              </div>
+              <div class="min-w-0">
+                <div class="text-white font-semibold text-sm truncate leading-tight">{{ current_user.full_name }}</div>
+                <div class="text-slate-400 text-xs truncate mt-0.5">
+                  {% if current_user.is_chef_service() %}Chef de service{% elif current_user.is_any_team_lead() %}Chef d'équipe{% else %}Collaborateur{% endif %}
+                </div>
+              </div>
+            </div>
+            <form method="post" action="{{ url_for('auth.logout') }}" class="shrink-0 ml-1">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="p-2 text-slate-400 hover:text-rose-400 rounded-lg hover:bg-slate-800 transition-colors" title="Se déconnecter">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                </svg>
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
+    </aside>
+
+    <!-- Zone de Contenu Principale avec Top Header -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <!-- Top Header Blanc (#FFFFFF) -->
+      <header class="bg-white border-b border-slate-200/80 shrink-0 z-10">
+        <div class="px-8 py-3.5 flex items-center justify-between gap-4">
+          <!-- Salutation / Fil d'ariane contextuel -->
+          <div class="flex items-center gap-3 min-w-0">
+            {% block header_content %}
+            <div>
+              <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <span>☀️</span>
+                <span>Bonjour, {{ current_user.first_name }} !</span>
+              </h1>
+              <p class="text-xs text-slate-500 mt-0.5">
+                {% if current_user.is_chef_service() %}
+                Voici un aperçu des activités de votre service aujourd'hui.
+                {% elif current_user.is_any_team_lead() %}
+                Voici l'état des activités de votre équipe cette semaine.
+                {% else %}
+                Voici vos tâches et activités pour cette semaine.
+                {% endif %}
+              </p>
+            </div>
+            {% endblock %}
+          </div>
+
+          <!-- Outils Droite : Sélecteur Semaine + Cloche + Avatar -->
+          <div class="flex items-center gap-3 shrink-0">
+            <!-- Sélecteur Période / Semaine -->
+            <div class="hidden sm:flex items-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-3.5 py-1.5 rounded-xl text-xs font-medium text-slate-700 transition-colors cursor-pointer shadow-sm">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              <span>Semaine en cours</span>
+              <svg class="w-3.5 h-3.5 text-slate-400 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+              </svg>
+            </div>
+
+            <!-- Cloche de Notifications -->
+            <a href="{{ url_for('notifications.list_notifications') }}"
+               class="relative p-2 text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors shadow-sm"
+               title="Notifications">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              {% if unread_notifications_count and unread_notifications_count > 0 %}
+              <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                {{ unread_notifications_count if unread_notifications_count < 10 else '9+' }}
+              </span>
+              {% endif %}
+            </a>
+
+            <!-- Avatar Utilisateur Initiales -->
+            <div class="w-9 h-9 rounded-full bg-slate-200 border border-slate-300 text-slate-700 font-bold text-xs flex items-center justify-center shadow-sm" title="{{ current_user.full_name }}">
+              {{ current_user.initials }}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Toasts de Notifications Flash -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="fixed top-20 right-6 space-y-2.5 z-50 max-w-sm pointer-events-none">
+            {% for category, message in messages %}
+              <div class="pointer-events-auto rounded-xl p-4 shadow-xl border text-sm font-medium flex items-start gap-3 transition-all transform animate-fade-in
+                {% if category == 'success' %}bg-emerald-50 text-emerald-900 border-emerald-200
+                {% elif category == 'error' %}bg-rose-50 text-rose-900 border-rose-200
+                {% elif category == 'warning' %}bg-amber-50 text-amber-900 border-amber-200
+                {% else %}bg-blue-50 text-blue-900 border-blue-200{% endif %}">
+                <span class="text-lg">
+                  {% if category == 'success' %}✅{% elif category == 'error' %}❌{% elif category == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+                </span>
+                <div class="flex-1">{{ message }}</div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Corps de la Page (Scrollable) -->
+      <main class="flex-1 overflow-y-auto px-8 py-6">
+        {% block content %}{% endblock %}
+      </main>
     </div>
-  </nav>
-  {% endif %}
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div class="fixed top-20 right-4 space-y-2 z-50">
-        {% for category, message in messages %}
-          <div class="rounded-md px-4 py-2 text-sm shadow bg-white border border-slate-200">{{ message }}</div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
-
-  <main class="max-w-6xl mx-auto px-4 py-8">
-    {% block content %}{% endblock %}
+  </div>
+  {% else %}
+  <!-- Layout pour les utilisateurs non authentifiés (ex: Login, Erreurs) -->
+  <main class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="fixed top-6 right-6 space-y-2 z-50">
+          {% for category, message in messages %}
+            <div class="rounded-xl px-4 py-3 text-sm shadow-md bg-white border border-slate-200">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block auth_box %}{% endblock %}
   </main>
+  {% endif %}
 </body>
 </html>

@@ -1,388 +1,319 @@
 {% extends "base.html" %}
-{% block title %}Rapport hebdomadaire - {{ report.user.full_name }}{% endblock %}
+{% block title %}Détail du rapport - {{ report.user.full_name }} - Z_Activités{% endblock %}
+
+{% block header_content %}
+<div class="flex items-center gap-3">
+  <a href="{{ url_for('reports.list_reports') }}"
+     class="p-2 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+     title="Retour aux rapports">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+    </svg>
+  </a>
+  <div>
+    <div class="flex items-center gap-2 text-xs text-slate-400">
+      <a href="{{ url_for('reports.list_reports') }}" class="hover:text-slate-600">Rapports</a>
+      <span>&rsaquo;</span>
+      <span class="text-slate-600 font-medium">Détail du rapport</span>
+    </div>
+    <h1 class="text-xl font-bold text-slate-900 mt-0.5">Rapport d'activités hebdomadaire</h1>
+  </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+  <a href="{{ url_for('reports.preview_report', id=report.id) }}"
+     class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer">
+    <span>👁</span> Aperçu officiel
+  </a>
+
+  <a href="{{ url_for('reports.export_docx', id=report.id) }}"
+     class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-sm transition-colors flex items-center gap-1.5 cursor-pointer">
+    <span>📥</span> Word (.docx)
+  </a>
+
+  {% if can_edit %}
+  <button onclick="document.getElementById('adjustReportModal').showModal()"
+          class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 cursor-pointer">
+    <span>✏️</span> Modifier
+  </button>
+  {% endif %}
+
+  {% if can_submit %}
+  <form method="post" action="{{ url_for('reports.submit_report_action', id=report.id) }}"
+        onsubmit="return confirm('Soumettre votre rapport hebdomadaire au chef de service pour validation ?');" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit"
+            class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer">
+      <span>🚀</span> Soumettre
+    </button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}
+
 {% block content %}
-<div class="space-y-6 max-w-4xl mx-auto">
-  <!-- Fil d'Ariane & Actions -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div class="space-y-1">
-      <div class="flex items-center gap-2 text-xs text-slate-500">
-        <a href="{{ url_for('reports.list_reports') }}" class="hover:underline">Rapports</a>
-        <span>/</span>
-        <span>Semaine du {{ report.period_start.strftime('%d/%m/%Y') }} au {{ report.period_end.strftime('%d/%m/%Y') }}</span>
+<div class="space-y-6">
+
+  <!-- Grande Carte d'En-tête du Rapport -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-start gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/25 text-2xl font-bold">
+          📄
+        </div>
+        <div>
+          <div class="flex items-center gap-3">
+            <h2 class="text-xl font-extrabold text-slate-900">
+              Rapport d'activités - Semaine du {{ report.period_start.strftime('%d') }} au {{ report.period_end.strftime('%d %b. %Y') }}
+            </h2>
+            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold
+              {% if report.status.value == 'valide' %}bg-emerald-100 text-emerald-800
+              {% elif report.status.value == 'soumis' %}bg-amber-100 text-amber-800
+              {% else %}bg-slate-100 text-slate-700{% endif %}">
+              <span class="w-1.5 h-1.5 rounded-full {% if report.status.value == 'valide' %}bg-emerald-500{% elif report.status.value == 'soumis' %}bg-amber-500{% else %}bg-slate-400{% endif %}"></span>
+              <span>{{ 'Validé' if report.status.value == 'valide' else ('En attente' if report.status.value == 'soumis' else 'Brouillon') }}</span>
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">
+            Période du {{ report.period_start.strftime('%d %B %Y') }} au {{ report.period_end.strftime('%d %B %Y') }}
+          </p>
+        </div>
       </div>
-      <h1 class="text-2xl font-bold text-slate-900">
-        Rapport d'activités hebdomadaire
-      </h1>
-      <p class="text-xs text-slate-500">
-        Collaborateur : <strong>{{ report.user.full_name }}</strong> (@{{ report.user.username }})
+
+      <!-- Actions de validation (Chef de service) -->
+      {% if can_validate or can_reject %}
+      <div class="flex items-center gap-2">
+        {% if can_validate %}
+        <form method="post" action="{{ url_for('reports.validate_report_action', id=report.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit"
+                  class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-md shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer">
+            <span>✓</span> Valider le rapport
+          </button>
+        </form>
+        {% endif %}
+        {% if can_reject %}
+        <form method="post" action="{{ url_for('reports.reject_report_action', id=report.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit"
+                  class="px-3.5 py-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer">
+            <span>↩</span> Demander révision
+          </button>
+        </form>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Mini-Cartes Métadonnées Organisationnelles -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4 border-t border-slate-100 text-xs">
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+        <div class="text-[10px] text-slate-400 font-medium">Période</div>
+        <div class="font-bold text-slate-800 mt-0.5">{{ report.period_start.strftime('%d') }} - {{ report.period_end.strftime('%d %b.') }}</div>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+        <div class="text-[10px] text-slate-400 font-medium">Type</div>
+        <div class="font-bold text-blue-700 mt-0.5">Hebdomadaire</div>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+        <div class="text-[10px] text-slate-400 font-medium">Équipe</div>
+        <div class="font-bold text-slate-800 mt-0.5 truncate">{{ report.user.team_links[0].team.name if report.user.team_links else 'Comptabilité' }}</div>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+        <div class="text-[10px] text-slate-400 font-medium">Généré par</div>
+        <div class="font-bold text-slate-800 mt-0.5 truncate">{{ report.user.full_name }}</div>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+        <div class="text-[10px] text-slate-400 font-medium">Date de génération</div>
+        <div class="font-bold text-slate-800 mt-0.5">{{ report.created_at.strftime('%d %b. %H:%M') }}</div>
+      </div>
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+        <div class="text-[10px] text-slate-400 font-medium">Date de validation</div>
+        <div class="font-bold text-slate-800 mt-0.5">{{ report.validated_at.strftime('%d %b. %H:%M') if report.validated_at else 'En attente' }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barre d'Onglets de Contenu -->
+  <div class="flex items-center gap-2 border-b border-slate-200 pb-2 text-xs font-semibold text-slate-600">
+    <button class="px-4 py-2 rounded-xl bg-blue-600 text-white shadow-sm font-bold">Aperçu</button>
+    <a href="{{ url_for('reports.preview_report', id=report.id) }}" class="px-4 py-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">Activités</a>
+    <a href="{{ url_for('reports.preview_report', id=report.id) }}" class="px-4 py-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">Statistiques</a>
+    <a href="{{ url_for('reports.preview_report', id=report.id) }}" class="px-4 py-2 rounded-xl hover:bg-slate-100 text-slate-600 transition-colors">Commentaires</a>
+  </div>
+
+  <!-- Section Résumé & KPIs -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-6">
+    
+    <div class="space-y-2">
+      <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+        <span class="text-blue-600">📄</span>
+        <h3>Résumé</h3>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed">
+        {{ report.summary or "Ce rapport présente l'ensemble des activités réalisées par le collaborateur au cours de la semaine. Les objectifs principaux ont été globalement atteints avec un taux de réalisation satisfaisant." }}
       </p>
     </div>
 
-    <!-- Barre d'actions -->
-    <div class="flex flex-wrap items-center gap-2">
-      <a href="{{ url_for('reports.export_docx', id=report.id) }}"
-         class="inline-flex items-center rounded-md bg-white border border-slate-300 text-slate-700 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 shadow-sm">
-        📥 Télécharger (.docx)
-      </a>
-
-      {% if can_edit %}
-      <a href="{{ url_for('reports.edit_report', id=report.id) }}"
-         class="inline-flex items-center rounded-md bg-slate-900 text-white px-3 py-1.5 text-xs font-medium hover:bg-slate-800 shadow-sm">
-        ✎ Modifier la synthèse
-      </a>
-      {% endif %}
-
-      {% if can_submit %}
-      <form method="post" action="{{ url_for('reports.submit_report_action', id=report.id) }}"
-            onsubmit="return confirm('Êtes-vous sûr de vouloir soumettre votre rapport ? Il sera transmis au chef de service pour validation.');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit"
-                class="inline-flex items-center rounded-md bg-blue-600 text-white px-3.5 py-1.5 text-xs font-medium hover:bg-blue-700 shadow-sm">
-          🚀 Soumettre pour validation
-        </button>
-      </form>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Banderole d'état du rapport -->
-  <div class="rounded-xl p-4 border
-    {% if report.status.value == 'valide' %}bg-green-50 border-green-200 text-green-900
-    {% elif report.status.value == 'soumis' %}bg-amber-50 border-amber-200 text-amber-900
-    {% else %}bg-slate-100 border-slate-200 text-slate-800{% endif %} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
-    <div class="flex items-center gap-3">
-      <span class="text-xl">
-        {% if report.status.value == 'valide' %}✅{% elif report.status.value == 'soumis' %}⏳{% else %}✎{% endif %}
-      </span>
-      <div>
-        <p class="font-semibold text-sm">
-          Statut : {{ report.status.value.upper() }}
-        </p>
-        <p class="text-[11px] opacity-80">
-          {% if report.status.value == 'valide' %}
-            Rapport validé le {{ report.validated_at.strftime('%d/%m/%Y à %H:%M') }} par {{ report.validated_by.full_name if report.validated_by else 'Chef de service' }}.
-          {% elif report.status.value == 'soumis' %}
-            Soumis le {{ report.submitted_at.strftime('%d/%m/%Y à %H:%M') }} — en attente de la validation finale du chef de service.
-          {% else %}
-            Rapport en cours de rédaction par le collaborateur (brouillon).
-          {% endif %}
-        </p>
+    <!-- 4 Indicateurs Pastel -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
+        <div class="text-2xl font-black text-blue-900 leading-none">{{ data.stats.completed_count }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Tâches réalisées</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-purple-50/60 border border-purple-100">
+        <div class="text-2xl font-black text-purple-900 leading-none">{{ data.unexpected_activities|length }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Activités imprévues</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+        <div class="text-2xl font-black text-emerald-900 leading-none">{{ data.stats.average_progress|round(0)|int if data.stats.average_progress is defined else 0 }} %</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Taux de réalisation</div>
+      </div>
+      <div class="p-4 rounded-2xl bg-rose-50/60 border border-rose-100">
+        <div class="text-2xl font-black text-rose-900 leading-none">{{ data.stats.late_count }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">En retard</div>
       </div>
     </div>
 
-    <!-- Actions Chef de Service (Validation / Révision) -->
-    {% if can_validate or can_reject %}
-    <div class="flex items-center gap-2 pt-2 sm:pt-0">
-      {% if can_validate %}
-      <button onclick="document.getElementById('modal-validate').classList.remove('hidden')"
-              class="bg-green-700 text-white px-3 py-1.5 rounded-md font-medium hover:bg-green-800 shadow-sm text-xs">
-        ✓ Valider le rapport
-      </button>
-      {% endif %}
-
-      {% if can_reject %}
-      <button onclick="document.getElementById('modal-reject').classList.remove('hidden')"
-              class="bg-amber-700 text-white px-3 py-1.5 rounded-md font-medium hover:bg-amber-800 shadow-sm text-xs">
-        ↩ Demander une révision
-      </button>
-      {% endif %}
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- Cartes KPI de la semaine -->
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
-      <div class="text-[11px] font-medium text-slate-500">Tâches actives</div>
-      <div class="text-xl font-bold text-slate-900 mt-1">{{ data.stats.total_tasks }}</div>
-    </div>
-    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
-      <div class="text-[11px] font-medium text-slate-500">Terminées</div>
-      <div class="text-xl font-bold text-green-600 mt-1">{{ data.stats.completed_count }}</div>
-    </div>
-    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
-      <div class="text-[11px] font-medium text-slate-500">En cours</div>
-      <div class="text-xl font-bold text-blue-600 mt-1">{{ data.stats.in_progress_count }}</div>
-    </div>
-    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
-      <div class="text-[11px] font-medium text-slate-500">En retard</div>
-      <div class="text-xl font-bold text-red-600 mt-1">{{ data.stats.late_count }}</div>
-    </div>
-    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
-      <div class="text-[11px] font-medium text-slate-500">Imprévues</div>
-      <div class="text-xl font-bold text-purple-600 mt-1">{{ data.stats.unexpected_count }}</div>
-    </div>
-    <div class="bg-white p-3 rounded-xl shadow border border-slate-100 text-center">
-      <div class="text-[11px] font-medium text-slate-500">Avancement</div>
-      <div class="text-xl font-bold text-indigo-600 mt-1">{{ data.stats.average_progress }} %</div>
-    </div>
-  </div>
-
-  <!-- 1. Tâches planifiées et réalisées -->
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-        <span>📋</span> Tâches planifiées et réalisées
-      </h2>
-      <span class="text-xs text-slate-400">{{ data.tasks|length }} tâche(s)</span>
-    </div>
-
-    {% if data.tasks %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-xs">
-        <thead class="bg-slate-50 text-slate-600 text-left uppercase tracking-wider">
-          <tr>
-            <th class="px-3 py-2">Tâche</th>
-            <th class="px-3 py-2">Équipe</th>
-            <th class="px-3 py-2">Échéance</th>
-            <th class="px-3 py-2">Statut</th>
-            <th class="px-3 py-2">Avancement</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for t in data.tasks %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-3 py-2.5">
-              <a href="{{ url_for('tasks.view_task', task_id=t.id) }}" class="font-medium text-slate-900 hover:text-blue-600">
-                {{ t.title }}
-              </a>
-              {% if t.is_late(report.period_end) and t.status.value != 'terminee' %}
-              <span class="ml-1 text-[10px] text-red-600 font-semibold bg-red-50 px-1.5 py-0.5 rounded">En retard</span>
-              {% endif %}
-            </td>
-            <td class="px-3 py-2.5 text-slate-600">{{ t.team.name if t.team else '-' }}</td>
-            <td class="px-3 py-2.5 text-slate-500 whitespace-nowrap">{{ t.due_date.strftime('%d/%m/%Y') if t.due_date else '-' }}</td>
-            <td class="px-3 py-2.5 whitespace-nowrap">
-              <span class="px-2 py-0.5 rounded text-[10px] font-semibold uppercase
-                {% if t.status.value == 'terminee' %}bg-green-100 text-green-800
-                {% elif t.status.value == 'en_cours' %}bg-blue-100 text-blue-800
-                {% elif t.status.value == 'bloquee' %}bg-red-100 text-red-800
-                {% else %}bg-slate-100 text-slate-700{% endif %}">
-                {{ t.status.value }}
-              </span>
-            </td>
-            <td class="px-3 py-2.5 w-32">
-              <div class="flex items-center gap-2">
-                <div class="w-full bg-slate-200 rounded-full h-1.5">
-                  <div class="bg-blue-600 h-1.5 rounded-full" style="width: {{ t.progress }}%"></div>
-                </div>
-                <span class="text-slate-600 font-medium text-[11px]">{{ t.progress|int }}%</span>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="text-xs text-slate-400 italic">Aucune tâche planifiée ou traitée sur cette semaine.</p>
-    {% endif %}
-  </div>
-
-  <!-- 2. Activités imprévues -->
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-        <span>⚡</span> Activités imprévues de la semaine
-      </h2>
-      <span class="text-xs text-slate-400">{{ data.unexpected_activities|length }} activité(s)</span>
-    </div>
-
-    {% if data.unexpected_activities %}
-    <div class="overflow-x-auto">
-      <table class="w-full text-xs">
-        <thead class="bg-slate-50 text-slate-600 text-left uppercase tracking-wider">
-          <tr>
-            <th class="px-3 py-2">Date</th>
-            <th class="px-3 py-2">Activité</th>
-            <th class="px-3 py-2">Demandeur</th>
-            <th class="px-3 py-2">Priorité</th>
-            <th class="px-3 py-2">Résultat / Avis superviseur</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for act in data.unexpected_activities %}
-          <tr class="hover:bg-slate-50">
-            <td class="px-3 py-2.5 text-slate-500 whitespace-nowrap">{{ act.activity_date.strftime('%d/%m/%Y') }}</td>
-            <td class="px-3 py-2.5 font-medium text-slate-900">{{ act.title }}</td>
-            <td class="px-3 py-2.5 text-slate-600">{{ act.requester or '-' }}</td>
-            <td class="px-3 py-2.5">
-              <span class="px-1.5 py-0.5 rounded text-[10px] uppercase font-semibold
-                {% if act.priority.value in ['urgente', 'haute'] %}bg-red-100 text-red-800{% else %}bg-slate-100 text-slate-700{% endif %}">
-                {{ act.priority.value }}
-              </span>
-            </td>
-            <td class="px-3 py-2.5 text-slate-600">
-              {% if act.result %}<div>{{ act.result }}</div>{% endif %}
-              {% if act.responsible_comment %}
-              <div class="text-[11px] text-blue-700 italic mt-0.5">💬 Avis : {{ act.responsible_comment }}</div>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% else %}
-    <p class="text-xs text-slate-400 italic">Aucune activité imprévue déclarée sur cette semaine.</p>
-    {% endif %}
-  </div>
-
-  <!-- 3. Analyse & Synthèse Narrative -->
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="border-b border-slate-100 pb-3">
-      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-        <span>📝</span> Analyse et synthèse de la semaine
-      </h2>
-    </div>
-
-    <div class="space-y-4 text-xs">
-      <div>
-        <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1">Synthèse narrative des travaux réalisés :</h3>
-        <div class="p-3 bg-slate-50 rounded-lg text-slate-700 border border-slate-100 whitespace-pre-line leading-relaxed">
-          {{ report.narrative_summary or 'Aucune synthèse narrative rédigée.' }}
-        </div>
+    <!-- Répartition par Statut (Barre segmentée horizontale) -->
+    <div class="space-y-3 pt-2">
+      <div class="text-xs font-bold text-slate-800">Répartition par statut</div>
+      
+      <!-- Barre horizontale segmentée -->
+      {% set total_t = data.stats.total_tasks if data.stats.total_tasks > 0 else 1 %}
+      <div class="w-full h-3 rounded-full bg-slate-100 flex overflow-hidden">
+        <div style="width: {{ (data.stats.completed_count / total_t * 100)|round(0)|int }}%" class="bg-emerald-500 h-full"></div>
+        <div style="width: {{ (data.stats.in_progress_count / total_t * 100)|round(0)|int }}%" class="bg-blue-500 h-full"></div>
+        <div style="width: {{ (data.stats.to_do_count / total_t * 100)|round(0)|int }}%" class="bg-amber-400 h-full"></div>
+        <div style="width: {{ (data.stats.late_count / total_t * 100)|round(0)|int }}%" class="bg-rose-500 h-full"></div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1">Difficultés rencontrées :</h3>
-          <div class="p-3 bg-slate-50 rounded-lg text-slate-700 border border-slate-100 whitespace-pre-line leading-relaxed min-h-[60px]">
-            {{ report.difficulties or 'Aucune difficulté particulière signalée.' }}
-          </div>
+      <!-- Légende -->
+      <div class="flex flex-wrap items-center gap-4 text-xs pt-1">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+          <span class="text-slate-600">Terminées {{ data.stats.completed_count }}</span>
         </div>
-
-        <div>
-          <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1">Solutions apportées ou proposées :</h3>
-          <div class="p-3 bg-slate-50 rounded-lg text-slate-700 border border-slate-100 whitespace-pre-line leading-relaxed min-h-[60px]">
-            {{ report.solutions or 'Non renseigné.' }}
-          </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+          <span class="text-slate-600">En cours {{ data.stats.in_progress_count }}</span>
         </div>
-      </div>
-
-      <div>
-        <h3 class="font-semibold text-slate-800 text-xs uppercase tracking-wider mb-1">Observations & remarques de supervision :</h3>
-        <div class="p-3 bg-blue-50/50 rounded-lg text-slate-800 border border-blue-100 whitespace-pre-line leading-relaxed">
-          {{ report.observations or 'Aucune observation enregistrée.' }}
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+          <span class="text-slate-600">À faire {{ data.stats.to_do_count }}</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+          <span class="text-slate-600">En retard {{ data.stats.late_count }}</span>
         </div>
       </div>
     </div>
+
   </div>
 
-  <!-- 4. Signatures et Validation -->
-  <div class="bg-white p-6 rounded-xl shadow space-y-4">
-    <div class="border-b border-slate-100 pb-3">
-      <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-        <span>✍️</span> Visa et approbation hiérarchique
-      </h2>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-      <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
-        <div class="font-bold text-slate-900 mb-1">Le Collaborateur</div>
-        <div class="text-slate-600">{{ report.user.full_name }}</div>
-        <div class="text-[11px] text-slate-400 mt-2">
-          {% if report.submitted_at %}
-          ✓ Soumis le {{ report.submitted_at.strftime('%d/%m/%Y à %H:%M') }}
-          {% else %}
-          ⏳ Non encore soumis
-          {% endif %}
-        </div>
-      </div>
-
-      <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
-        <div class="font-bold text-slate-900 mb-1">Le Chef d'Équipe</div>
-        <div class="text-slate-600">Visa / Consultation équipe</div>
-        <div class="text-[11px] text-slate-400 mt-2">
-          Périmètre de consultation respecté (RB-024)
-        </div>
-      </div>
-
-      <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
-        <div class="font-bold text-slate-900 mb-1">Le Chef de Service</div>
-        <div class="text-slate-600">Validation finale (RB-023)</div>
-        <div class="text-[11px] mt-2">
-          {% if report.validated_at %}
-          <span class="text-green-700 font-semibold">✓ Validé le {{ report.validated_at.strftime('%d/%m/%Y à %H:%M') }}</span>
-          <div class="text-slate-500 text-[10px]">par {{ report.validated_by.full_name if report.validated_by else 'Chef de service' }}</div>
-          {% else %}
-          <span class="text-slate-400 italic">En attente de validation</span>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 
-<!-- Modal Validation (Chef de Service) -->
-{% if can_validate %}
-<div id="modal-validate" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <h3 class="font-bold text-slate-900 text-sm">Valider le rapport hebdomadaire</h3>
-      <button onclick="document.getElementById('modal-validate').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
-    </div>
-    <form method="post" action="{{ url_for('reports.validate_report_action', id=report.id) }}" class="space-y-3">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <p class="text-xs text-slate-600">
-        Vous êtes sur le point de procéder à la validation finale du rapport de <strong>{{ report.user.full_name }}</strong> pour la semaine du {{ report.period_start.strftime('%d/%m/%Y') }}.
-      </p>
-      <div>
-        <label for="val_observations" class="block text-xs font-medium text-slate-700 mb-1">
-          Observations / Félicitations / Remarques (optionnel) :
-        </label>
-        <textarea id="val_observations" name="observations" rows="3"
-                  class="w-full text-xs rounded-md border border-slate-300 p-2 focus:ring-1 focus:ring-green-500"
-                  placeholder="Ex : Travail satisfaisant, objectifs de la semaine atteints..."></textarea>
+<!-- Modal Modifier / Ajuster le rapport -->
+<dialog id="adjustReportModal" class="rounded-2xl shadow-2xl p-0 backdrop:bg-slate-900/40 w-full max-w-2xl border-0 overflow-hidden">
+  <div class="bg-white p-6 space-y-5">
+    
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">
+          📄
+        </div>
+        <h2 class="text-base font-bold text-slate-900">Modifier / Ajuster le rapport</h2>
       </div>
-      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-        <button type="button" onclick="document.getElementById('modal-validate').classList.add('hidden')"
-                class="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-600 hover:bg-slate-50">
+      <button onclick="document.getElementById('adjustReportModal').close()"
+              class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1">
+        ✕
+      </button>
+    </div>
+
+    <form method="post" action="{{ url_for('reports.edit_report', id=report.id) }}" class="space-y-4 text-xs">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div>
+        <label for="rep_title" class="block font-semibold text-slate-700 mb-1">Titre du rapport *</label>
+        <input type="text" id="rep_title" name="title"
+               value="Rapport d'activités - Semaine {{ report.period_start.strftime('%W') }}"
+               class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Période *</label>
+          <input type="text" readonly
+                 value="{{ report.period_start.strftime('%d/%m/%Y') }} - {{ report.period_end.strftime('%d/%m/%Y') }}"
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-600">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Type de rapport *</label>
+          <input type="text" readonly value="Hebdomadaire"
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-600">
+        </div>
+      </div>
+
+      <div>
+        <label for="summary" class="block font-semibold text-slate-700 mb-1">Description / Résumé *</label>
+        <div class="border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+          <div class="flex items-center gap-3 px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-serif font-bold">
+            <span class="cursor-pointer hover:text-slate-900">B</span>
+            <span class="cursor-pointer hover:text-slate-900 italic">I</span>
+            <span class="cursor-pointer hover:text-slate-900 underline">U</span>
+            <span class="text-slate-300">|</span>
+            <span class="cursor-pointer hover:text-slate-900">≡</span>
+            <span class="cursor-pointer hover:text-slate-900">⋮</span>
+          </div>
+          <textarea id="summary" name="summary" rows="4" required
+                    class="w-full p-3 text-xs border-0 focus:outline-none">{{ report.summary or '' }}</textarea>
+        </div>
+      </div>
+
+      <!-- Données et ajustements -->
+      <div class="space-y-2 pt-2 border-t border-slate-100">
+        <label class="block font-semibold text-slate-700">Données et ajustements</label>
+        <div class="grid grid-cols-2 gap-2 text-slate-600">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            <span>Inclure les tâches réalisées</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            <span>Inclure les graphiques</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            <span>Inclure les activités imprévues</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            <span>Inclure la liste des membres</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            <span>Inclure les statistiques</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            <span>Inclure l'historique des actions</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('adjustReportModal').close()"
+                class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
           Annuler
         </button>
         <button type="submit"
-                class="px-4 py-1.5 rounded-md bg-green-700 text-white text-xs font-medium hover:bg-green-800 shadow">
-          Confirmer la validation
+                class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md shadow-blue-500/20 transition-all">
+          Enregistrer les modifications
         </button>
       </div>
     </form>
   </div>
-</div>
-{% endif %}
-
-<!-- Modal Demande de Révision (Chef de Service) -->
-{% if can_reject %}
-<div id="modal-reject" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-      <h3 class="font-bold text-slate-900 text-sm">Demander une révision</h3>
-      <button onclick="document.getElementById('modal-reject').classList.add('hidden')" class="text-slate-400 hover:text-slate-600">✕</button>
-    </div>
-    <form method="post" action="{{ url_for('reports.reject_report_action', id=report.id) }}" class="space-y-3">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <p class="text-xs text-slate-600">
-        Le rapport sera renvoyé en <strong>brouillon</strong> au collaborateur pour qu'il le modifie et le soumette à nouveau.
-      </p>
-      <div>
-        <label for="reason" class="block text-xs font-medium text-slate-700 mb-1">
-          Motif de la révision / Éléments à compléter :
-        </label>
-        <textarea id="reason" name="reason" rows="3" required
-                  class="w-full text-xs rounded-md border border-slate-300 p-2 focus:ring-1 focus:ring-amber-500"
-                  placeholder="Ex : Merci de détailler les causes du retard sur la tâche de réconciliation bancaire..."></textarea>
-      </div>
-      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-        <button type="button" onclick="document.getElementById('modal-reject').classList.add('hidden')"
-                class="px-3 py-1.5 rounded-md border border-slate-300 text-xs font-medium text-slate-600 hover:bg-slate-50">
-          Annuler
-        </button>
-        <button type="submit"
-                class="px-4 py-1.5 rounded-md bg-amber-700 text-white text-xs font-medium hover:bg-amber-800 shadow">
-          Renvoyer en brouillon
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-{% endif %}
+</dialog>
 {% endblock %}

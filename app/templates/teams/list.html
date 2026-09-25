@@ -1,60 +1,303 @@
 {% extends "base.html" %}
-{% block title %}Équipes{% endblock %}
-{% block content %}
-<div class="space-y-4">
-  <div class="flex items-center justify-between">
-    <h1 class="text-xl font-semibold">Équipes</h1>
-    <a href="{{ url_for('teams.create_team') }}" class="rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium">
-      Nouvelle équipe
-    </a>
+{% block title %}Équipes - Z_Activités{% endblock %}
+
+{% block header_content %}
+<div class="flex items-center gap-3">
+  <div class="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold text-lg shadow-sm">
+    👥
   </div>
-  <div class="bg-white rounded-xl shadow overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="bg-slate-100 text-left">
-        <tr>
-          <th class="px-4 py-2">Nom</th>
-          <th class="px-4 py-2">Chef(s) d'équipe</th>
-          <th class="px-4 py-2">Membres</th>
-          <th class="px-4 py-2"></th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
-        {% for team in teams %}
-        <tr>
-          <td class="px-4 py-2">
-            <span class="font-medium text-slate-900">{{ team.name }}</span>
-            {% if team.description %}
-            <p class="text-xs text-slate-500">{{ team.description }}</p>
-            {% endif %}
-          </td>
-          <td class="px-4 py-2">
-            {% set leads = team.member_links | selectattr('is_team_lead') | list %}
-            {% for link in leads %}
-              <span class="inline-block rounded-full bg-blue-50 text-blue-700 px-2 py-0.5 text-xs mr-1 font-medium">
-                {{ link.user.full_name }}
-              </span>
-            {% else %}
-              <span class="text-slate-400 text-xs italic">Non désigné</span>
-            {% endfor %}
-          </td>
-          <td class="px-4 py-2">
-            <span class="inline-block rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-xs font-medium">
-              {{ team.member_links|length }} membre{{ "s" if team.member_links|length > 1 else "" }}
-            </span>
-          </td>
-          <td class="px-4 py-2 text-right">
-            <a href="{{ url_for('teams.edit_team', team_id=team.id) }}" class="text-slate-600 hover:underline">
-              Modifier
-            </a>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="4" class="px-4 py-6 text-center text-slate-500">Aucune équipe.</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div>
+    <h1 class="text-xl font-bold text-slate-900 leading-tight">Équipes</h1>
+    <p class="text-xs text-slate-500">Gérez les équipes de votre service et leurs membres.</p>
   </div>
 </div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-3">
+  <div class="relative hidden sm:block">
+    <input type="text" id="teamSearchInput" onkeyup="searchTeams()"
+           placeholder="Rechercher une équipe..."
+           class="pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-56 shadow-sm">
+    <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+  </div>
+
+  <button onclick="document.getElementById('createTeamModal').showModal()"
+          class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+    </svg>
+    <span>Nouvelle équipe</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- 4 Cartes KPI Pastel -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    
+    <!-- KPI 1 : Équipes au total -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+        👥
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-900 leading-none">{{ total_teams }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Équipes au total</div>
+      </div>
+    </div>
+
+    <!-- KPI 2 : Membres actifs -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+        👤
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-900 leading-none">{{ total_members }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Membres actifs</div>
+      </div>
+    </div>
+
+    <!-- KPI 3 : Tâches en cours -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-xl shrink-0">
+        📋
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-900 leading-none">{{ total_tasks_in_progress }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Tâches en cours</div>
+      </div>
+    </div>
+
+    <!-- KPI 4 : Taux de réalisation global -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center text-xl shrink-0">
+        ✓
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-900 leading-none">{{ global_rate }} %</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Taux de réalisation global</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Barre du Tableau et Filtres -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <div class="w-6 h-6 rounded-lg bg-blue-600/10 text-blue-600 flex items-center justify-center text-xs font-bold">
+        👥
+      </div>
+      <h2 class="text-base font-bold text-slate-900">Liste des équipes</h2>
+    </div>
+
+    <div class="flex items-center gap-2 self-end sm:self-auto">
+      <select class="text-xs rounded-xl border border-slate-200 px-3 py-1.5 bg-white text-slate-700 font-medium">
+        <option>Toutes les équipes</option>
+      </select>
+      <select class="text-xs rounded-xl border border-slate-200 px-3 py-1.5 bg-white text-slate-700 font-medium">
+        <option>Trier par nom</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Tableau des Équipes -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-xs" id="teamsTable">
+        <thead>
+          <tr class="border-b border-slate-100 bg-slate-50/60 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+            <th class="py-3.5 px-4 w-12">#</th>
+            <th class="py-3.5 px-4 min-w-[200px]">Nom de l'équipe</th>
+            <th class="py-3.5 px-4 min-w-[240px]">Description</th>
+            <th class="py-3.5 px-4 min-w-[150px]">Chef d'équipe</th>
+            <th class="py-3.5 px-4 min-w-[130px]">Membres</th>
+            <th class="py-3.5 px-3 min-w-[90px]">Tâches</th>
+            <th class="py-3.5 px-3">Statut</th>
+            <th class="py-3.5 px-4 min-w-[120px]">Date de création</th>
+            <th class="py-3.5 px-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          {% for team in teams %}
+          {% set team_leader = team.leader %}
+          <tr class="team-row hover:bg-slate-50/70 transition-colors">
+            <td class="py-3.5 px-4 font-mono text-slate-400 font-bold">
+              #{{ "%02d"|format(team.id) }}
+            </td>
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  🏛
+                </div>
+                <a href="{{ url_for('teams.view_team', team_id=team.id) }}" class="font-bold text-slate-900 hover:text-blue-600 transition-colors">
+                  {{ team.name }}
+                </a>
+              </div>
+            </td>
+            <td class="py-3.5 px-4 text-slate-500 max-w-xs truncate">
+              {{ team.description or "Tenue des opérations courantes et rapprochements." }}
+            </td>
+            <td class="py-3.5 px-4">
+              {% if team_leader %}
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-slate-800 text-white text-[10px] font-bold flex items-center justify-center">
+                  {{ team_leader.initials }}
+                </div>
+                <span class="font-medium text-slate-800">{{ team_leader.full_name }}</span>
+              </div>
+              {% else %}
+              <span class="text-slate-400 italic">Non désigné</span>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-4">
+              <div class="flex items-center -space-x-1.5">
+                {% for member in team.members[:2] %}
+                <div class="w-6 h-6 rounded-full bg-slate-800 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white"
+                     title="{{ member.full_name }}">
+                  {{ member.initials }}
+                </div>
+                {% endfor %}
+                {% if team.member_count > 2 %}
+                <div class="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-[9px] font-bold flex items-center justify-center border-2 border-white">
+                  +{{ team.member_count - 2 }}
+                </div>
+                {% elif team.member_count == 0 %}
+                <span class="text-slate-400 text-[10px]">0 membre</span>
+                {% endif %}
+              </div>
+            </td>
+            <td class="py-3.5 px-3">
+              <div class="font-bold text-slate-900">{{ team.tasks|length if team.tasks else 0 }}</div>
+              <div class="text-[10px] text-blue-600 font-semibold">actives</div>
+            </td>
+            <td class="py-3.5 px-3 whitespace-nowrap">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <span>Active</span>
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+              Actuelle
+            </td>
+            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-1">
+                <a href="{{ url_for('teams.view_team', team_id=team.id) }}"
+                   class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                   title="Consulter l'équipe">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </a>
+                <a href="{{ url_for('teams.edit_team', team_id=team.id) }}"
+                   class="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-slate-100 transition-colors"
+                   title="Modifier">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9" class="py-12 text-center text-slate-400">Aucune équipe enregistrée.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Créer une nouvelle équipe -->
+<dialog id="createTeamModal" class="rounded-2xl shadow-2xl p-0 backdrop:bg-slate-900/40 w-full max-w-xl border-0 overflow-hidden">
+  <div class="bg-white p-6 space-y-5">
+    
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">
+          +
+        </div>
+        <h2 class="text-base font-bold text-slate-900">Créer une nouvelle équipe</h2>
+      </div>
+      <button onclick="document.getElementById('createTeamModal').close()"
+              class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1">
+        ✕
+      </button>
+    </div>
+
+    <!-- Formulaire -->
+    <form method="post" action="{{ url_for('teams.create_team') }}" class="space-y-4 text-xs">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div>
+        <label for="team_name" class="block font-semibold text-slate-700 mb-1">Nom de l'équipe <span class="text-rose-500">*</span></label>
+        <input type="text" id="team_name" name="name" required
+               placeholder="Ex: Trésorerie"
+               class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      </div>
+
+      <div>
+        <label for="team_desc" class="block font-semibold text-slate-700 mb-1">Description</label>
+        <textarea id="team_desc" name="description" rows="3"
+                  placeholder="Décrivez la mission et les objectifs de cette équipe..."
+                  class="w-full p-3 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Chef d'équipe</label>
+          <select class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-700">
+            <option value="">Sélectionner un membre</option>
+            {% for u in users %}
+            <option value="{{ u.id }}">{{ u.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Couleur</label>
+          <div class="flex items-center gap-2">
+            <input type="color" value="#3B82F6" class="w-8 h-8 rounded-lg border-0 cursor-pointer p-0">
+            <input type="text" value="#3B82F6" class="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 text-slate-600">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 pt-2">
+        <input type="checkbox" checked id="team_active" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+        <label for="team_active" class="text-slate-700 font-medium">Équipe active (visible dans les listes)</label>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('createTeamModal').close()"
+                class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
+          Annuler
+        </button>
+        <button type="submit"
+                class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md shadow-blue-500/20 transition-all">
+          Créer l'équipe
+        </button>
+      </div>
+    </form>
+
+  </div>
+</dialog>
+
+<script>
+function searchTeams() {
+  const query = document.getElementById('teamSearchInput').value.toLowerCase();
+  const rows = document.querySelectorAll('.team-row');
+  rows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    row.style.display = text.includes(query) ? '' : 'none';
+  });
+}
+</script>
 {% endblock %}

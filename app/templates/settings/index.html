@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}Paramètres - Z_Activités{% endblock %}
+
+{% block header_content %}
+<div class="flex items-center gap-3">
+  <div class="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold text-lg shadow-sm">
+    ⚙
+  </div>
+  <div>
+    <h1 class="text-xl font-bold text-slate-900 leading-tight">Paramètres</h1>
+    <p class="text-xs text-slate-500">Configurez votre espace de travail selon les besoins de votre organisation.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="relative hidden sm:block">
+  <input type="text" placeholder="Rechercher un paramètre..."
+         class="pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-56 shadow-sm">
+  <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+  </svg>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Barre d'Onglets Horizontaux avec Icônes -->
+  <div class="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-200 text-xs font-semibold">
+    <a href="{{ url_for('settings.settings_view', tab='general') }}"
+       class="px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all {% if active_tab == 'general' %}bg-blue-600 text-white shadow-sm font-bold{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+      <span>⚙</span>
+      <span>Général</span>
+    </a>
+    
+    {% if current_user.is_chef_service() %}
+    <a href="{{ url_for('users.list_users') }}"
+       class="px-3.5 py-2 rounded-xl flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all">
+      <span>👤</span>
+      <span>Gestion des utilisateurs</span>
+    </a>
+
+    <a href="{{ url_for('teams.list_teams') }}"
+       class="px-3.5 py-2 rounded-xl flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all">
+      <span>👥</span>
+      <span>Équipes</span>
+    </a>
+    {% endif %}
+
+    <a href="{{ url_for('tasks.list_tasks') }}"
+       class="px-3.5 py-2 rounded-xl flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all">
+      <span>📋</span>
+      <span>Tâches et activités</span>
+    </a>
+
+    <a href="{{ url_for('notifications.list_notifications') }}"
+       class="px-3.5 py-2 rounded-xl flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all">
+      <span>🔔</span>
+      <span>Notifications</span>
+    </a>
+
+    <button type="button" class="px-3.5 py-2 rounded-xl flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all">
+      <span>🎨</span>
+      <span>Apparence</span>
+    </button>
+
+    <button type="button" class="px-3.5 py-2 rounded-xl flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all">
+      <span>🛡</span>
+      <span>Sécurité</span>
+    </button>
+
+    <button type="button" class="px-3.5 py-2 rounded-xl flex items-center gap-2 text-slate-600 hover:bg-slate-100 transition-all">
+      <span>🗄</span>
+      <span>Données</span>
+    </button>
+  </div>
+
+  <form method="post" action="{{ url_for('settings.settings_view') }}" class="space-y-6">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <!-- Grille de Paramètres en 3 Colonnes -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Colonne 1 : Informations de l'organisation -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4 text-xs">
+        <div class="flex items-center gap-2 text-slate-900 font-bold text-sm pb-2 border-b border-slate-100">
+          <span class="text-blue-600">🏛</span>
+          <h3>Informations de l'organisation</h3>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Nom de l'organisation <span class="text-rose-500">*</span></label>
+          <input type="text" name="org_name" value="Zingana Hôtel"
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Description</label>
+          <textarea rows="3" name="org_desc"
+                    class="w-full p-3 rounded-xl border border-slate-200 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">Gestion et suivi des activités internes de l'établissement.</textarea>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 mb-1">Adresse</label>
+          <input type="text" name="org_address" value="Avenue de l'Indépendance, Bafoussam"
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Téléphone</label>
+            <input type="text" name="org_phone" value="+237 6 70 12 34 56"
+                   class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Email</label>
+            <input type="email" name="org_email" value="contact@zingana.cm"
+                   class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Fuseau horaire</label>
+            <select class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800">
+              <option>(GMT+01:00) Douala, Yaoundé</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Langue par défaut</label>
+            <select class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800">
+              <option>Français</option>
+              <option>English</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Colonne 2 : Préférences générales -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4 text-xs">
+        <div class="flex items-center gap-2 text-slate-900 font-bold text-sm pb-2 border-b border-slate-100">
+          <span class="text-blue-600">⚙</span>
+          <h3>Préférences générales</h3>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Format de date</label>
+            <select class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800">
+              <option>31/12/2024</option>
+              <option>2024-12-31</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Format d'heure</label>
+            <select class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800">
+              <option>24 heures (14:30)</option>
+              <option>12 heures (02:30 PM)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Page d'accueil</label>
+            <select class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800">
+              <option>Tableau de bord</option>
+              <option>Tâches</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Éléments par page</label>
+            <select class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800">
+              <option>20</option>
+              <option>50</option>
+              <option>100</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Toggles / Switches -->
+        <div class="space-y-3 pt-3 border-t border-slate-100">
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-slate-700 font-medium">Activer les commentaires</span>
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-slate-700 font-medium">Autoriser les pièces jointes</span>
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-slate-700 font-medium">Activer l'approbation des tâches</span>
+            <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-slate-700 font-medium">Afficher les activités des autres équipes</span>
+            <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-slate-700 font-medium">Mode maintenance</span>
+            <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Colonne 3 : Notifications globales & Sauvegarde des données -->
+      <div class="space-y-6 text-xs">
+        
+        <!-- Notifications globales -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm pb-2 border-b border-slate-100">
+            <span class="text-blue-600">🔔</span>
+            <h3>Notifications globales</h3>
+          </div>
+
+          <div class="space-y-3">
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-slate-700 font-medium">Email pour les nouvelles tâches</span>
+              <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+            </label>
+
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-slate-700 font-medium">Email pour les activités imprévues</span>
+              <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+            </label>
+
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-slate-700 font-medium">Rappel des tâches en retard</span>
+              <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+            </label>
+
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-slate-700 font-medium">Résumé quotidien par email</span>
+              <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+            </label>
+
+            <label class="flex items-center justify-between cursor-pointer">
+              <span class="text-slate-700 font-medium">Résumé hebdomadaire par email</span>
+              <input type="checkbox" checked class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+            </label>
+          </div>
+        </div>
+
+        <!-- Sauvegarde des données -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+          <div class="flex items-center gap-2 text-slate-900 font-bold text-sm pb-2 border-b border-slate-100">
+            <span class="text-blue-600">🗄</span>
+            <h3>Sauvegarde des données</h3>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Fréquence</label>
+              <select class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-800">
+                <option>Quotidienne</option>
+                <option>Hebdomadaire</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Heure</label>
+              <input type="text" value="02:00" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800">
+            </div>
+          </div>
+
+          <button type="button"
+                  class="w-full py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition-colors flex items-center justify-center gap-2">
+            <span>💾</span> Lancer une sauvegarde maintenant
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Bouton Enregistrer en bas à droite -->
+    <div class="flex items-center justify-end pt-4">
+      <button type="submit"
+              class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+        Enregistrer les paramètres
+      </button>
+    </div>
+
+  </form>
+
+</div>
+{% endblock %}

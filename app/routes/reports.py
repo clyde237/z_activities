@@ -82,6 +82,10 @@ def list_reports():
             .all()
         )
 
+    from ..models import MonthlyReport
+
+    monthly_reports = db.session.query(MonthlyReport).order_by(MonthlyReport.year.desc(), MonthlyReport.month.desc()).all()
+
     cur_start, cur_end = get_week_bounds()
     my_current_report = (
         db.session.query(WeeklyReport)
@@ -89,9 +93,26 @@ def list_reports():
         .one_or_none()
     )
 
+    total_reports = len(reports) + len(monthly_reports)
+    validated_reports = sum(1 for r in reports if r.status == WeeklyReportStatus.VALIDE) + sum(1 for m in monthly_reports if m.status.value == 'finalise')
+    pending_reports = sum(1 for r in reports if r.status == WeeklyReportStatus.SOUMIS)
+    draft_reports = sum(1 for r in reports if r.status == WeeklyReportStatus.BROUILLON) + sum(1 for m in monthly_reports if m.status.value == 'brouillon')
+
+    validated_pct = round((validated_reports / total_reports * 100)) if total_reports else 0
+    pending_pct = round((pending_reports / total_reports * 100)) if total_reports else 0
+    draft_pct = round((draft_reports / total_reports * 100)) if total_reports else 0
+
     return render_template(
         "reports/list.html",
         reports=reports,
+        monthly_reports=monthly_reports,
+        total_reports=total_reports,
+        validated_reports=validated_reports,
+        pending_reports=pending_reports,
+        draft_reports=draft_reports,
+        validated_pct=validated_pct,
+        pending_pct=pending_pct,
+        draft_pct=draft_pct,
         current_status=status_filter,
         current_user_id=user_id_filter,
         current_team_id=team_id_filter,
@@ -130,6 +151,27 @@ def detail_report(id: int):
         can_validate=can_validate,
         can_reject=can_reject,
     )
+
+
+@reports_blueprint.get("/<int:id>/preview")
+@login_required
+def preview_report(id: int):
+    report = db.session.get(WeeklyReport, id)
+    if report is None:
+        abort(404)
+
+    if not can_view_report(current_user, report):
+        abort(403)
+
+    report_data = get_report_data(report)
+    return render_template(
+        "reports/preview.html",
+        report=report,
+        data=report_data,
+    )
+
+
+
 
 
 @reports_blueprint.route("/<int:id>/edit", methods=["GET", "POST"])

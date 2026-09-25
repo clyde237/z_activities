@@ -1,124 +1,324 @@
 {% extends "base.html" %}
-{% block title %}Activité : {{ activity.title }}{% endblock %}
+{% block title %}{{ activity.title }} - Activité imprévue - Z_Activités{% endblock %}
+
+{% block header_content %}
+<div class="flex items-center gap-3">
+  <a href="{{ url_for('activities.list_activities') }}"
+     class="p-2 rounded-xl border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+     title="Retour à la liste des activités imprévues">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+    </svg>
+  </a>
+  <div>
+    <div class="flex items-center gap-2 text-xs text-slate-400">
+      <a href="{{ url_for('activities.list_activities') }}" class="hover:text-slate-600">Activités imprévues</a>
+      <span>&rsaquo;</span>
+      <span class="text-slate-600 font-medium truncate max-w-xs">{{ activity.title }}</span>
+    </div>
+    <h1 class="text-xl font-bold text-slate-900 mt-0.5">{{ activity.title }}</h1>
+  </div>
+</div>
+{% endblock %}
+
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-6">
-  <!-- En-tête -->
-  <div class="flex items-center justify-between">
-    <div>
-      <a href="{{ url_for('activities.list_activities') }}" class="text-xs text-slate-500 hover:text-slate-800">
-        &larr; Liste des activités imprévues
-      </a>
-      <h1 class="text-2xl font-bold text-slate-900 mt-1">{{ activity.title }}</h1>
+<div class="space-y-6">
+
+  <!-- Grande Carte d'En-tête de l'Activité Imprévue -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-5">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      
+      <div class="flex items-start gap-4">
+        <!-- Grande icône violette avec éclair -->
+        <div class="w-14 h-14 rounded-2xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/25 text-2xl font-bold">
+          ⚡
+        </div>
+        <div>
+          <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="text-xl font-extrabold text-slate-900">{{ activity.title }}</h2>
+            <span class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-semibold
+              {% if activity.status_label == 'Résolue' %}bg-emerald-100 text-emerald-800
+              {% elif activity.status_label == 'En cours' %}bg-blue-100 text-blue-800
+              {% else %}bg-rose-100 text-rose-800{% endif %}">
+              <span class="w-1.5 h-1.5 rounded-full
+                {% if activity.status_label == 'Résolue' %}bg-emerald-500
+                {% elif activity.status_label == 'En cours' %}bg-blue-500
+                {% else %}bg-rose-500{% endif %}"></span>
+              <span>{{ activity.status_label }}</span>
+            </span>
+          </div>
+
+          <p class="text-xs text-slate-500 mt-1 max-w-2xl">
+            {{ activity.description or 'Activité ponctuelle non planifiée enregistrée au fil de l\'eau.' }}
+          </p>
+
+          <!-- Badges de métadonnées -->
+          <div class="flex flex-wrap items-center gap-3 mt-3 text-xs">
+            <span class="font-mono text-xs font-bold text-slate-400">#{{ "%03d"|format(activity.id) }}</span>
+            <span class="px-2.5 py-0.5 rounded font-bold
+              {% if activity.priority.value == 'urgente' %}bg-rose-100 text-rose-700
+              {% elif activity.priority.value == 'normale' %}bg-amber-100 text-amber-700
+              {% else %}bg-emerald-100 text-emerald-700{% endif %}">
+              ● {{ 'Haute' if activity.priority.value == 'urgente' else ('Moyenne' if activity.priority.value == 'normale' else 'Basse') }}
+            </span>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-teal-50 text-teal-800 font-medium">
+              <span>🏛</span>
+              <span>{{ activity.team_name }}</span>
+            </div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-slate-50 text-slate-600 font-medium">
+              <span>📅</span>
+              <span>{{ activity.activity_date.strftime('%d %b. %Y') }} {% if activity.start_time %}à {{ activity.start_time.strftime('%H:%M') }}{% endif %}</span>
+            </div>
+            {% if activity.status_label == 'Résolue' %}
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 font-semibold">
+              <span>✔</span>
+              <span>Résolue {% if activity.end_time %}à {{ activity.end_time.strftime('%H:%M') }}{% endif %}</span>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Boutons d'Action à droite -->
+      <div class="flex items-center gap-2 self-start lg:self-center shrink-0">
+        {% if can_edit %}
+        <a href="{{ url_for('activities.edit_activity_route', activity_id=activity.id) }}"
+           class="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm">
+          <span>✏️</span> Modifier
+        </a>
+        <form method="post" action="{{ url_for('activities.delete_activity_route', activity_id=activity.id) }}"
+              onsubmit="return confirm('Confirmez-vous la suppression de cette activité imprévue ?');"
+              class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit"
+                  class="p-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs transition-colors cursor-pointer"
+                  title="Supprimer l'activité">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+          </button>
+        </form>
+        {% endif %}
+      </div>
+
     </div>
-    {% if can_edit %}
-    <div class="flex items-center gap-2">
-      <a href="{{ url_for('activities.edit_activity_route', activity_id=activity.id) }}"
-         class="rounded-md border border-slate-300 bg-white text-slate-700 px-3 py-1.5 text-xs font-medium hover:bg-slate-50 shadow-sm">
-        Modifier
-      </a>
-      <form method="post" action="{{ url_for('activities.delete_activity_route', activity_id=activity.id) }}"
-            onsubmit="return confirm('Confirmez-vous la suppression de cette activité imprévue ?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit" class="rounded-md bg-rose-50 border border-rose-200 text-rose-700 px-3 py-1.5 text-xs font-medium hover:bg-rose-100">
-          Supprimer
-        </button>
-      </form>
-    </div>
-    {% endif %}
   </div>
 
-  <!-- Fiche détail -->
-  <div class="bg-white rounded-xl shadow divide-y divide-slate-100">
-    <!-- Métadonnées principales -->
-    <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-      <div>
-        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Date</span>
-        <p class="font-semibold text-slate-900 mt-0.5">{{ activity.activity_date.strftime('%d/%m/%Y') }}</p>
-      </div>
+  <!-- Contenu Principal en 2 Colonnes -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <div>
-        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Horaires</span>
-        <p class="font-medium text-slate-900 mt-0.5">
-          {% if activity.start_time and activity.end_time %}
-            {{ activity.start_time.strftime('%H:%M') }} &rarr; {{ activity.end_time.strftime('%H:%M') }}
-          {% elif activity.start_time %}
-            À partir de {{ activity.start_time.strftime('%H:%M') }}
-          {% else %}
-            Non précisés
-          {% endif %}
+    <!-- Colonne Gauche (2 colonnes) : Description & Informations -->
+    <div class="lg:col-span-2 space-y-6">
+
+      <!-- Carte Description -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-3">
+        <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <h3>Description</h3>
+        </div>
+        <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+          {{ activity.description or 'Aucune description détaillée n\'a été fournie pour cette activité imprévue.' }}
         </p>
+
+        {% if activity.result %}
+        <div class="mt-4 p-4 rounded-xl bg-emerald-50/60 border border-emerald-100">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-800">Résultat obtenu :</div>
+          <div class="text-xs text-emerald-950 mt-1 whitespace-pre-line">{{ activity.result }}</div>
+        </div>
+        {% endif %}
+
+        {% if activity.responsible_comment %}
+        <div class="mt-4 p-4 rounded-xl bg-purple-50/60 border border-purple-100">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-purple-800">Commentaire du responsable :</div>
+          <div class="text-xs text-purple-950 mt-1 whitespace-pre-line">{{ activity.responsible_comment }}</div>
+        </div>
+        {% endif %}
       </div>
 
-      <div>
-        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Priorité</span>
-        <div class="mt-0.5">
-          {% if activity.priority.value == 'urgente' %}
-            <span class="rounded bg-red-100 text-red-800 px-2 py-0.5 font-bold">Urgente</span>
-          {% elif activity.priority.value == 'haute' %}
-            <span class="rounded bg-amber-100 text-amber-800 px-2 py-0.5 font-semibold">Haute</span>
-          {% elif activity.priority.value == 'basse' %}
-            <span class="rounded bg-slate-100 text-slate-600 px-2 py-0.5">Basse</span>
-          {% else %}
-            <span class="rounded bg-slate-100 text-slate-700 px-2 py-0.5">Normale</span>
+      <!-- Carte Informations Détaillées -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <h3>Informations</h3>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div class="flex items-center justify-between py-2 border-b border-slate-50">
+            <span class="text-slate-400 flex items-center gap-2">
+              <span>👥</span> Équipe / Service
+            </span>
+            <span class="font-bold text-slate-800">{{ activity.team_name }}</span>
+          </div>
+
+          <div class="flex items-center justify-between py-2 border-b border-slate-50">
+            <span class="text-slate-400 flex items-center gap-2">
+              <span>👤</span> Signalée par
+            </span>
+            <span class="font-bold text-slate-800">{{ activity.user.full_name }}</span>
+          </div>
+
+          <div class="flex items-center justify-between py-2 border-b border-slate-50">
+            <span class="text-slate-400 flex items-center gap-2">
+              <span>📅</span> Date de création
+            </span>
+            <span class="font-semibold text-slate-700">{{ activity.created_at.strftime('%d %b. %Y à %H:%M') }}</span>
+          </div>
+
+          <div class="flex items-center justify-between py-2 border-b border-slate-50">
+            <span class="text-slate-400 flex items-center gap-2">
+              <span>⏱</span> Horaires d'exécution
+            </span>
+            <span class="font-semibold text-slate-700">
+              {% if activity.start_time and activity.end_time %}
+                {{ activity.start_time.strftime('%H:%M') }} &rarr; {{ activity.end_time.strftime('%H:%M') }}
+              {% elif activity.start_time %}
+                À partir de {{ activity.start_time.strftime('%H:%M') }}
+              {% else %}
+                Non précisés
+              {% endif %}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between py-2 border-b border-slate-50">
+            <span class="text-slate-400 flex items-center gap-2">
+              <span>🏷</span> Statut
+            </span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold
+              {% if activity.status_label == 'Résolue' %}bg-emerald-100 text-emerald-800
+              {% elif activity.status_label == 'En cours' %}bg-blue-100 text-blue-800
+              {% else %}bg-rose-100 text-rose-800{% endif %}">
+              {{ activity.status_label }}
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between py-2">
+            <span class="text-slate-400 flex items-center gap-2">
+              <span>⚡</span> Priorité
+            </span>
+            <span class="px-2 py-0.5 rounded text-[11px] font-bold
+              {% if activity.priority.value == 'urgente' %}bg-rose-100 text-rose-700
+              {% elif activity.priority.value == 'normale' %}bg-amber-100 text-amber-700
+              {% else %}bg-emerald-100 text-emerald-700{% endif %}">
+              {{ 'Haute' if activity.priority.value == 'urgente' else ('Moyenne' if activity.priority.value == 'normale' else 'Basse') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Colonne Droite (1 colonne) : Personnes impliquées & Historique -->
+    <div class="space-y-6">
+
+      <!-- Carte Personnes Impliquées -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+          </svg>
+          <h3>Personnes impliquées</h3>
+        </div>
+
+        <div class="space-y-3">
+          <!-- Auteur -->
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-slate-800 text-white font-bold text-xs flex items-center justify-center">
+                {{ activity.user.initials }}
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-900">{{ activity.user.full_name }}</div>
+                <div class="text-[10px] text-slate-400">Signalé par</div>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700">
+              {{ activity.team_name }}
+            </span>
+          </div>
+
+          {% if activity.requester %}
+          <!-- Demandeur -->
+          <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-amber-500 text-white font-bold text-xs flex items-center justify-center">
+                {{ activity.requester[0]|upper }}
+              </div>
+              <div>
+                <div class="text-xs font-bold text-slate-900">{{ activity.requester }}</div>
+                <div class="text-[10px] text-slate-400">Demandeur / Origine</div>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700">
+              Demandeur
+            </span>
+          </div>
           {% endif %}
         </div>
       </div>
 
-      <div>
-        <span class="text-slate-400 font-medium uppercase tracking-wider text-[10px]">Demandeur</span>
-        <p class="font-medium text-slate-900 mt-0.5">{{ activity.requester or "—" }}</p>
+      <!-- Carte Historique des Actions (Timeline) -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-4">
+        <div class="flex items-center gap-2 text-slate-900 font-bold text-sm">
+          <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <h3>Historique des actions</h3>
+        </div>
+
+        <div class="relative pl-6 space-y-5 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+          
+          <!-- Étape 1 : Création -->
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-sm"></span>
+            <div class="text-[10px] font-medium text-slate-400">
+              {{ activity.created_at.strftime('%d %b. %Y %H:%M') }}
+            </div>
+            <div class="text-xs font-bold text-slate-800 mt-0.5">
+              Activité créée par {{ activity.user.full_name }}
+            </div>
+          </div>
+
+          <!-- Étape 2 : Prise en charge / Début -->
+          {% if activity.start_time %}
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-amber-500 border-2 border-white shadow-sm"></span>
+            <div class="text-[10px] font-medium text-slate-400">
+              {{ activity.activity_date.strftime('%d %b. %Y') }} {{ activity.start_time.strftime('%H:%M') }}
+            </div>
+            <div class="text-xs font-bold text-slate-800 mt-0.5">
+              Prise en charge de l'activité
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Étape 3 : Résolution -->
+          {% if activity.status_label == 'Résolue' %}
+          <div class="relative">
+            <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white shadow-sm"></span>
+            <div class="text-[10px] font-medium text-slate-400">
+              {{ activity.activity_date.strftime('%d %b. %Y') }} {% if activity.end_time %}{{ activity.end_time.strftime('%H:%M') }}{% endif %}
+            </div>
+            <div class="text-xs font-bold text-emerald-800 mt-0.5">
+              Activité marquée comme résolue
+            </div>
+            {% if activity.result %}
+            <div class="text-[11px] text-slate-500 mt-0.5">
+              {{ activity.result }}
+            </div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+        </div>
       </div>
+
     </div>
 
-    <!-- Collaborateur ayant réalisé l'activité -->
-    <div class="p-6 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
-        {{ activity.user.first_name[0] }}{{ activity.user.last_name[0] }}
-      </div>
-      <div>
-        <p class="font-medium text-slate-900 text-sm">Réalisé par : {{ activity.user.full_name }}</p>
-        <p class="text-xs text-slate-500">
-          {% if activity.user.function %}{{ activity.user.function }} &bull; {% endif %}
-          Enregistré le {{ activity.created_at.strftime('%d/%m/%Y à %H:%M') }}
-        </p>
-      </div>
-    </div>
-
-    <!-- Description -->
-    {% if activity.description %}
-    <div class="p-6 space-y-1">
-      <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Description</h2>
-      <p class="text-sm text-slate-700 whitespace-pre-line">{{ activity.description }}</p>
-    </div>
-    {% endif %}
-
-    <!-- Résultat -->
-    {% if activity.result %}
-    <div class="p-6 space-y-1 bg-emerald-50/50">
-      <h2 class="text-xs uppercase font-semibold text-emerald-800 tracking-wider">Résultat obtenu</h2>
-      <p class="text-sm text-emerald-900 whitespace-pre-line">{{ activity.result }}</p>
-    </div>
-    {% endif %}
-
-    <!-- Commentaire responsable -->
-    <div class="p-6 space-y-1">
-      <div class="flex items-center justify-between">
-        <h2 class="text-xs uppercase font-medium text-slate-400 tracking-wider">Avis / Commentaire du responsable</h2>
-        {% if is_manager and not activity.responsible_comment %}
-        <a href="{{ url_for('activities.edit_activity_route', activity_id=activity.id) }}"
-           class="text-xs text-blue-600 hover:underline">
-          + Ajouter un commentaire
-        </a>
-        {% endif %}
-      </div>
-      {% if activity.responsible_comment %}
-      <p class="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-200 mt-2">
-        {{ activity.responsible_comment }}
-      </p>
-      {% else %}
-      <p class="text-xs text-slate-400 italic">Aucun commentaire de l'encadrement pour le moment.</p>
-      {% endif %}
-    </div>
   </div>
+
 </div>
 {% endblock %}

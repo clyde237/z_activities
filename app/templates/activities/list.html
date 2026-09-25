@@ -1,133 +1,409 @@
 {% extends "base.html" %}
-{% block title %}Activités imprévues{% endblock %}
-{% block content %}
-<div class="space-y-6">
-  <!-- En-tête -->
-  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-    <div>
-      <h1 class="text-2xl font-bold text-slate-900">Activités imprévues</h1>
-      <p class="text-xs text-slate-500 mt-1">
-        Enregistrement des travaux non planifiés réalisés au fil de l'eau.
-      </p>
-    </div>
-    <div>
-      <a href="{{ url_for('activities.create_new_activity') }}"
-         class="inline-flex items-center rounded-md bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800 shadow">
-        + Déclarer une activité
-      </a>
-    </div>
-  </div>
+{% block title %}Activités imprévues - Z_Activités{% endblock %}
 
-  <!-- Barre de filtres (si encadrement) -->
-  {% if selectable_users %}
-  <div class="bg-white p-4 rounded-xl shadow flex items-center justify-between">
-    <form method="get" class="flex items-center gap-3">
-      <label for="user_id" class="text-xs font-medium text-slate-600">Filtrer par collaborateur :</label>
-      <select id="user_id" name="user_id" onchange="this.form.submit()"
-              class="text-xs rounded-md border border-slate-300 px-3 py-1.5 bg-white">
-        <option value="">Tous les collaborateurs</option>
-        {% for u in selectable_users %}
-        <option value="{{ u.id }}" {% if current_user_id == u.id %}selected{% endif %}>
-          {{ u.full_name }} (@{{ u.username }})
-        </option>
-        {% endfor %}
-      </select>
-      {% if current_user_id %}
-      <a href="{{ url_for('activities.list_activities') }}" class="text-xs text-slate-500 hover:text-slate-800 underline">
-        Réinitialiser
-      </a>
-      {% endif %}
-    </form>
-    <div class="text-xs text-slate-400">
-      {{ activities|length }} activité{{ "s" if activities|length > 1 else "" }}
-    </div>
+{% block header_content %}
+<div class="flex items-center gap-3">
+  <div class="w-10 h-10 rounded-xl bg-purple-600/10 text-purple-600 flex items-center justify-center font-bold text-lg shadow-sm">
+    ⚡
   </div>
-  {% endif %}
-
-  <!-- Table des activités imprévues -->
-  <div class="bg-white rounded-xl shadow overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="bg-slate-100 text-left text-xs uppercase text-slate-600 tracking-wider">
-        <tr>
-          <th class="px-4 py-3">Date & Heure</th>
-          <th class="px-4 py-3">Activité</th>
-          <th class="px-4 py-3">Collaborateur</th>
-          <th class="px-4 py-3">Demandeur</th>
-          <th class="px-4 py-3">Priorité</th>
-          <th class="px-4 py-3">Supervision</th>
-          <th class="px-4 py-3 text-right">Actions</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-slate-100">
-        {% for a in activities %}
-        <tr class="hover:bg-slate-50 transition">
-          <td class="px-4 py-3 text-xs whitespace-nowrap">
-            <span class="font-medium text-slate-900">{{ a.activity_date.strftime('%d/%m/%Y') }}</span>
-            {% if a.start_time and a.end_time %}
-            <p class="text-[11px] text-slate-400">
-              {{ a.start_time.strftime('%H:%M') }} - {{ a.end_time.strftime('%H:%M') }}
-            </p>
-            {% elif a.start_time %}
-            <p class="text-[11px] text-slate-400">à {{ a.start_time.strftime('%H:%M') }}</p>
-            {% endif %}
-          </td>
-          <td class="px-4 py-3">
-            <a href="{{ url_for('activities.view_activity', activity_id=a.id) }}" class="font-medium text-slate-900 hover:underline">
-              {{ a.title }}
-            </a>
-            {% if a.description %}
-            <p class="text-xs text-slate-500 line-clamp-1 mt-0.5">{{ a.description }}</p>
-            {% endif %}
-            {% if a.result %}
-            <p class="text-[11px] text-emerald-700 mt-1">
-              <strong>Résultat :</strong> {{ a.result }}
-            </p>
-            {% endif %}
-          </td>
-          <td class="px-4 py-3 text-xs">
-            <span class="font-medium text-slate-800">{{ a.user.full_name }}</span>
-            {% if a.user.function %}
-            <p class="text-[11px] text-slate-400">{{ a.user.function }}</p>
-            {% endif %}
-          </td>
-          <td class="px-4 py-3 text-xs text-slate-600">
-            {{ a.requester or "—" }}
-          </td>
-          <td class="px-4 py-3 text-xs">
-            {% if a.priority.value == 'urgente' %}
-              <span class="rounded bg-red-100 text-red-800 px-2 py-0.5 text-xs font-bold">Urgente</span>
-            {% elif a.priority.value == 'haute' %}
-              <span class="rounded bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-semibold">Haute</span>
-            {% elif a.priority.value == 'basse' %}
-              <span class="rounded bg-slate-100 text-slate-600 px-2 py-0.5 text-xs">Basse</span>
-            {% else %}
-              <span class="rounded bg-slate-100 text-slate-700 px-2 py-0.5 text-xs">Normale</span>
-            {% endif %}
-          </td>
-          <td class="px-4 py-3 text-xs">
-            {% if a.responsible_comment %}
-              <span class="inline-flex items-center gap-1 text-blue-700 text-xs font-medium">
-                <span>💬</span> Commenté
-              </span>
-            {% else %}
-              <span class="text-slate-400 text-xs italic">Sans remarque</span>
-            {% endif %}
-          </td>
-          <td class="px-4 py-3 text-right text-xs whitespace-nowrap space-x-2">
-            <a href="{{ url_for('activities.view_activity', activity_id=a.id) }}" class="text-slate-600 hover:text-slate-900 font-medium">
-              Voir
-            </a>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="7" class="px-4 py-12 text-center text-slate-400 text-sm">
-            Aucune activité imprévue enregistrée.
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div>
+    <h1 class="text-xl font-bold text-slate-900 leading-tight">Activités imprévues</h1>
+    <p class="text-xs text-slate-500">Enregistrez et suivez les activités non planifiées ou urgentes.</p>
   </div>
 </div>
+{% endblock %}
+
+{% block header_actions %}
+<button onclick="document.getElementById('declareActivityModal').showModal()"
+        class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+  </svg>
+  <span>Nouvelle activité imprévue</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- 4 Cartes KPI Pastel -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    
+    <!-- KPI 1 : Total -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+        ⚡
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-900 leading-none">{{ total_activities }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Total des activités</div>
+        <div class="text-[11px] font-semibold text-emerald-600 mt-0.5">↑ {{ total_activities }} actives</div>
+      </div>
+    </div>
+
+    <!-- KPI 2 : Résolues -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+        ✓
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-900 leading-none">{{ resolved_count }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">Résolues</div>
+        <div class="text-[11px] font-semibold text-emerald-600 mt-0.5">{{ resolved_pct }}%</div>
+      </div>
+    </div>
+
+    <!-- KPI 3 : En cours -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+        ⏱
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-900 leading-none">{{ in_progress_count }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">En cours</div>
+        <div class="text-[11px] font-semibold text-amber-600 mt-0.5">{{ in_progress_pct }}%</div>
+      </div>
+    </div>
+
+    <!-- KPI 4 : En attente -->
+    <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-xl shrink-0">
+        !
+      </div>
+      <div>
+        <div class="text-2xl font-black text-slate-900 leading-none">{{ pending_count }}</div>
+        <div class="text-xs font-medium text-slate-500 mt-1">En attente</div>
+        <div class="text-[11px] font-semibold text-rose-600 mt-0.5">{{ pending_pct }}%</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Barre d'onglets et de filtres -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <!-- Onglets pills -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1" id="statusFilterTabs">
+      <button onclick="filterActivities('all')" data-status="all"
+              class="status-tab px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-all bg-blue-600 text-white shadow-sm">
+        <span>Toutes</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-white/20 text-white font-bold">{{ total_activities }}</span>
+      </button>
+      <button onclick="filterActivities('En attente')" data-status="En attente"
+              class="status-tab px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-all bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+        <span>En attente</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-700 font-bold">{{ pending_count }}</span>
+      </button>
+      <button onclick="filterActivities('En cours')" data-status="En cours"
+              class="status-tab px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-all bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+        <span>En cours</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-700 font-bold">{{ in_progress_count }}</span>
+      </button>
+      <button onclick="filterActivities('Résolue')" data-status="Résolue"
+              class="status-tab px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-all bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+        <span>Résolues</span>
+        <span class="px-1.5 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-700 font-bold">{{ resolved_count }}</span>
+      </button>
+    </div>
+
+    <!-- Outils de recherche et filtres -->
+    <div class="flex items-center gap-2.5">
+      <div class="relative">
+        <input type="text" id="searchActivityInput" onkeyup="searchActivities()"
+               placeholder="Rechercher une activité..."
+               class="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-52 sm:w-64">
+        <svg class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+
+      {% if selectable_users %}
+      <form method="get" class="flex items-center">
+        <select name="user_id" onchange="this.form.submit()"
+                class="text-xs rounded-xl border border-slate-200 px-3 py-1.5 bg-white text-slate-700 font-medium">
+          <option value="">Tous les collaborateurs</option>
+          {% for u in selectable_users %}
+          <option value="{{ u.id }}" {% if current_user_id == u.id %}selected{% endif %}>
+            {{ u.full_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Tableau des Activités Imprévues -->
+  <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left border-collapse text-xs" id="activitiesTable">
+        <thead>
+          <tr class="border-b border-slate-100 bg-slate-50/60 text-slate-400 text-[11px] font-semibold uppercase tracking-wider">
+            <th class="py-3.5 px-4 w-8">
+              <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            </th>
+            <th class="py-3.5 px-3 w-14">#</th>
+            <th class="py-3.5 px-4 min-w-[200px]">Titre de l'activité</th>
+            <th class="py-3.5 px-4 min-w-[200px]">Description</th>
+            <th class="py-3.5 px-4 min-w-[140px]">Équipe / Service</th>
+            <th class="py-3.5 px-4 min-w-[140px]">Signalée par</th>
+            <th class="py-3.5 px-4 min-w-[120px]">Date</th>
+            <th class="py-3.5 px-3">Priorité</th>
+            <th class="py-3.5 px-3">Statut</th>
+            <th class="py-3.5 px-4 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-700">
+          {% for a in activities %}
+          <tr class="activity-row hover:bg-slate-50/70 transition-colors" data-status="{{ a.status_label }}">
+            <td class="py-3.5 px-4">
+              <input type="checkbox" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+            </td>
+            <td class="py-3.5 px-3 font-mono text-slate-400 font-bold">
+              #{{ "%02d"|format(a.id) }}
+            </td>
+            <td class="py-3.5 px-4 font-bold text-slate-900">
+              <a href="{{ url_for('activities.view_activity', activity_id=a.id) }}" class="hover:text-blue-600 transition-colors">
+                {{ a.title }}
+              </a>
+            </td>
+            <td class="py-3.5 px-4 text-slate-500 max-w-xs truncate">
+              {{ a.description or (a.result or '—') }}
+            </td>
+            <td class="py-3.5 px-4">
+              <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 font-medium text-slate-700">
+                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span>{{ a.team_name }}</span>
+              </div>
+            </td>
+            <td class="py-3.5 px-4">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-slate-800 text-white text-[10px] font-bold flex items-center justify-center">
+                  {{ a.user.initials }}
+                </div>
+                <span class="font-medium text-slate-800">{{ a.user.full_name }}</span>
+              </div>
+            </td>
+            <td class="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+              <div>{{ a.activity_date.strftime('%d %b. %Y') }}</div>
+              {% if a.start_time %}
+              <div class="text-[10px] text-slate-400">{{ a.start_time.strftime('%H:%M') }}</div>
+              {% endif %}
+            </td>
+            <td class="py-3.5 px-3 whitespace-nowrap">
+              <span class="px-2.5 py-0.5 rounded text-[11px] font-bold
+                {% if a.priority.value == 'urgente' %}bg-rose-100 text-rose-700
+                {% elif a.priority.value == 'normale' %}bg-amber-100 text-amber-700
+                {% else %}bg-emerald-100 text-emerald-700{% endif %}">
+                {{ 'Haute' if a.priority.value == 'urgente' else ('Moyenne' if a.priority.value == 'normale' else 'Basse') }}
+              </span>
+            </td>
+            <td class="py-3.5 px-3 whitespace-nowrap">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold
+                {% if a.status_label == 'Résolue' %}bg-emerald-100 text-emerald-800
+                {% elif a.status_label == 'En cours' %}bg-blue-100 text-blue-800
+                {% else %}bg-rose-100 text-rose-800{% endif %}">
+                <span class="w-1.5 h-1.5 rounded-full
+                  {% if a.status_label == 'Résolue' %}bg-emerald-500
+                  {% elif a.status_label == 'En cours' %}bg-blue-500
+                  {% else %}bg-rose-500{% endif %}"></span>
+                <span>{{ a.status_label }}</span>
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+              <div class="flex items-center justify-end gap-1">
+                <a href="{{ url_for('activities.view_activity', activity_id=a.id) }}"
+                   class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
+                   title="Voir le détail">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </a>
+                <a href="{{ url_for('activities.edit_activity_route', activity_id=a.id) }}"
+                   class="p-1.5 rounded-lg text-slate-400 hover:text-amber-600 hover:bg-slate-100 transition-colors"
+                   title="Modifier">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" class="py-12 text-center text-slate-400">
+              Aucune activité imprévue enregistrée.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Déclarer une activité imprévue -->
+<dialog id="declareActivityModal" class="rounded-2xl shadow-2xl p-0 backdrop:bg-slate-900/40 w-full max-w-xl border-0 overflow-hidden">
+  <div class="bg-white p-6 space-y-5">
+    
+    <!-- En-tête de la Modal -->
+    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">
+          +
+        </div>
+        <h2 class="text-base font-bold text-slate-900">Déclarer une activité imprévue</h2>
+      </div>
+      <button onclick="document.getElementById('declareActivityModal').close()"
+              class="text-slate-400 hover:text-slate-600 text-lg font-bold p-1">
+        ✕
+      </button>
+    </div>
+
+    <!-- Formulaire -->
+    <form method="post" action="{{ url_for('activities.create_new_activity') }}" class="space-y-4 text-xs">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- Titre -->
+      <div>
+        <label for="act_title" class="block font-semibold text-slate-700 mb-1">Titre de l'activité <span class="text-rose-500">*</span></label>
+        <input type="text" id="act_title" name="title" required
+               placeholder="Ex: Panne du système de paiement"
+               class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      </div>
+
+      <!-- Description avec barre d'outils visuelle -->
+      <div>
+        <label for="act_desc" class="block font-semibold text-slate-700 mb-1">Description <span class="text-rose-500">*</span></label>
+        <div class="border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+          <div class="flex items-center gap-3 px-3 py-1.5 bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-serif font-bold">
+            <span class="cursor-pointer hover:text-slate-900">B</span>
+            <span class="cursor-pointer hover:text-slate-900 italic">I</span>
+            <span class="cursor-pointer hover:text-slate-900 underline">U</span>
+            <span class="text-slate-300">|</span>
+            <span class="cursor-pointer hover:text-slate-900">≡</span>
+            <span class="cursor-pointer hover:text-slate-900">⋮</span>
+          </div>
+          <textarea id="act_desc" name="description" rows="3" required
+                    placeholder="Décrivez l'activité imprévue, le contexte, les actions réalisées ou à réaliser..."
+                    class="w-full p-3 text-xs border-0 focus:outline-none"></textarea>
+        </div>
+      </div>
+
+      <!-- Équipe & Date/Heure -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="act_team" class="block font-semibold text-slate-700 mb-1">Équipe / Service <span class="text-rose-500">*</span></label>
+          <select id="act_team" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            {% for team in teams %}
+            <option value="{{ team.id }}">{{ team.name }}</option>
+            {% else %}
+            <option value="">Général</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label for="act_date" class="block font-semibold text-slate-700 mb-1">Date <span class="text-rose-500">*</span></label>
+          <input type="date" id="act_date" name="activity_date" required
+                 value="{{ today.strftime('%Y-%m-%d') if today else '' }}"
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Horaires Début & Fin -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="act_start_time" class="block font-semibold text-slate-700 mb-1">Heure de début</label>
+          <input type="time" id="act_start_time" name="start_time"
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label for="act_end_time" class="block font-semibold text-slate-700 mb-1">Heure de fin</label>
+          <input type="time" id="act_end_time" name="end_time"
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Priorité en boutons stylisés -->
+      <div>
+        <label class="block font-semibold text-slate-700 mb-2">Priorité <span class="text-rose-500">*</span></label>
+        <div class="grid grid-cols-3 gap-3">
+          <label class="flex items-center justify-center gap-2 p-2 rounded-xl border border-emerald-200 bg-emerald-50/50 cursor-pointer hover:bg-emerald-50 text-emerald-800 font-semibold text-xs">
+            <input type="radio" name="priority" value="faible" class="text-emerald-600 focus:ring-emerald-500">
+            <span>Basse</span>
+          </label>
+          <label class="flex items-center justify-center gap-2 p-2 rounded-xl border border-amber-200 bg-amber-50/50 cursor-pointer hover:bg-amber-50 text-amber-800 font-semibold text-xs">
+            <input type="radio" name="priority" value="normale" checked class="text-amber-600 focus:ring-amber-500">
+            <span>Moyenne</span>
+          </label>
+          <label class="flex items-center justify-center gap-2 p-2 rounded-xl border border-rose-200 bg-rose-50/50 cursor-pointer hover:bg-rose-50 text-rose-800 font-semibold text-xs">
+            <input type="radio" name="priority" value="urgente" class="text-rose-600 focus:ring-rose-500">
+            <span>Haute</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Demandeur & Résultat -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label for="act_requester" class="block font-semibold text-slate-700 mb-1">Demandeur / Origine</label>
+          <input type="text" id="act_requester" name="requester"
+                 placeholder="Ex: Direction Générale, Client..."
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+        <div>
+          <label for="act_result" class="block font-semibold text-slate-700 mb-1">Résultat obtenu</label>
+          <input type="text" id="act_result" name="result"
+                 placeholder="Ex: Résolu avec succès..."
+                 class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Boutons d'Action -->
+      <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+        <button type="button" onclick="document.getElementById('declareActivityModal').close()"
+                class="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors">
+          Annuler
+        </button>
+        <button type="submit"
+                class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md shadow-blue-500/20 transition-all">
+          Créer l'activité
+        </button>
+      </div>
+    </form>
+
+  </div>
+</dialog>
+
+<script>
+function filterActivities(status) {
+  const tabs = document.querySelectorAll('.status-tab');
+  tabs.forEach(tab => {
+    if (tab.getAttribute('data-status') === status) {
+      tab.className = 'status-tab px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-all bg-blue-600 text-white shadow-sm';
+    } else {
+      tab.className = 'status-tab px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 transition-all bg-white text-slate-600 border border-slate-200 hover:bg-slate-50';
+    }
+  });
+
+  const rows = document.querySelectorAll('.activity-row');
+  rows.forEach(row => {
+    if (status === 'all' || row.getAttribute('data-status') === status) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+function searchActivities() {
+  const query = document.getElementById('searchActivityInput').value.toLowerCase();
+  const rows = document.querySelectorAll('.activity-row');
+  rows.forEach(row => {
+    const text = row.innerText.toLowerCase();
+    row.style.display = text.includes(query) ? '' : 'none';
+  });
+}
+</script>
 {% endblock %}

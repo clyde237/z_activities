@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+{% block title %}Calendrier - Z_Activités{% endblock %}
+
+{% block header_content %}
+<div class="flex items-center gap-3">
+  <div class="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 flex items-center justify-center font-bold text-lg shadow-sm">
+    📅
+  </div>
+  <div>
+    <h1 class="text-xl font-bold text-slate-900 leading-tight">Calendrier</h1>
+    <p class="text-xs text-slate-500">Visualisez et planifiez les tâches et activités de votre équipe.</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block header_actions %}
+<div class="flex items-center gap-2">
+  <form method="get" class="flex items-center">
+    <select name="team_id" onchange="this.form.submit()"
+            class="text-xs rounded-xl border border-slate-200 px-3 py-2 bg-white text-slate-700 font-medium shadow-sm">
+      <option value="">Toutes les équipes</option>
+      {% for t in teams %}
+      <option value="{{ t.id }}" {% if current_team_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+
+  <a href="{{ url_for('tasks.create_task_route') }}"
+     class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+    </svg>
+    <span>Nouvelle tâche</span>
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Layout Principal : Calendrier (9 cols) + Volet latéral (3 cols) -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    
+    <!-- Zone Calendrier Principal (9 cols) -->
+    <div class="lg:col-span-8 xl:col-span-9 bg-white rounded-2xl p-6 shadow-sm border border-slate-100 space-y-5">
+      
+      <!-- Barre d'outils du calendrier -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-100">
+        
+        <!-- Navigation par mois -->
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-1">
+            <a href="{{ url_for('calendar.calendar_view', year=prev_month_date.year, month=prev_month_date.month, team_id=current_team_id, mine='1' if only_mine else '0') }}"
+               class="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
+               title="Mois précédent">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </a>
+            <a href="{{ url_for('calendar.calendar_view', year=next_month_date.year, month=next_month_date.month, team_id=current_team_id, mine='1' if only_mine else '0') }}"
+               class="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors"
+               title="Mois suivant">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+              </svg>
+            </a>
+          </div>
+
+          <a href="{{ url_for('calendar.calendar_view', year=today.year, month=today.month, team_id=current_team_id, mine='1' if only_mine else '0') }}"
+             class="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors">
+            Aujourd'hui
+          </a>
+
+          <h2 class="text-lg font-extrabold text-slate-900 ml-2">
+            {{ current_month_name }}
+          </h2>
+        </div>
+
+        <!-- Sélecteur de vue (Mois, Semaine, Jour, Liste) -->
+        <div class="flex items-center p-1 rounded-xl bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-600 self-start sm:self-auto">
+          <button class="px-3 py-1 rounded-lg bg-blue-600 text-white shadow-sm font-bold">Mois</button>
+          <button class="px-3 py-1 rounded-lg hover:text-slate-900 transition-colors">Semaine</button>
+          <button class="px-3 py-1 rounded-lg hover:text-slate-900 transition-colors">Jour</button>
+          <button class="px-3 py-1 rounded-lg hover:text-slate-900 transition-colors">Liste</button>
+        </div>
+
+      </div>
+
+      <!-- Grille Mensuelle du Calendrier (7 colonnes) -->
+      <div class="border border-slate-200 rounded-2xl overflow-hidden bg-slate-200 gap-px grid grid-cols-7">
+        
+        <!-- En-têtes des jours de la semaine -->
+        <div class="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-500">Lun</div>
+        <div class="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-500">Mar</div>
+        <div class="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-500">Mer</div>
+        <div class="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-500">Jeu</div>
+        <div class="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-500">Ven</div>
+        <div class="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-500">Sam</div>
+        <div class="bg-slate-50 py-2.5 text-center text-xs font-bold text-slate-500">Dim</div>
+
+        <!-- Cellules des jours -->
+        {% for week in month_days %}
+          {% for day in week %}
+            {% set is_current_month = (day.month == current_month) %}
+            {% set is_today = (day == today) %}
+            {% set date_key = day.isoformat() %}
+            {% set day_events = events_by_date.get(date_key, []) %}
+
+            <div class="bg-white min-h-[110px] p-2 flex flex-col justify-between transition-colors hover:bg-slate-50/80 {% if not is_current_month %}bg-slate-50/50 text-slate-300{% endif %}">
+              
+              <!-- Numéro du jour -->
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold {% if is_today %}w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/30{% elif is_current_month %}text-slate-800{% else %}text-slate-400{% endif %}">
+                  {{ day.day }}
+                </span>
+                {% if day_events|length > 2 %}
+                <span class="text-[10px] font-semibold text-blue-600">+{{ day_events|length - 2 }}</span>
+                {% endif %}
+              </div>
+
+              <!-- Événements du jour -->
+              <div class="space-y-1 my-1 flex-1 overflow-hidden">
+                {% for ev in day_events[:2] %}
+                <div class="px-1.5 py-0.5 rounded text-[10px] font-semibold truncate flex items-center gap-1
+                  {% if ev.color == 'blue' %}bg-blue-50 text-blue-800 border border-blue-100
+                  {% elif ev.color == 'rose' %}bg-rose-50 text-rose-800 border border-rose-100
+                  {% elif ev.color == 'green' %}bg-emerald-50 text-emerald-800 border border-emerald-100
+                  {% elif ev.color == 'amber' %}bg-amber-50 text-amber-800 border border-amber-100
+                  {% else %}bg-purple-50 text-purple-800 border border-purple-100{% endif %}"
+                  title="{{ ev.time }} - {{ ev.title }}">
+                  <span class="w-1.5 h-1.5 rounded-full shrink-0
+                    {% if ev.color == 'blue' %}bg-blue-600
+                    {% elif ev.color == 'rose' %}bg-rose-600
+                    {% elif ev.color == 'green' %}bg-emerald-600
+                    {% elif ev.color == 'amber' %}bg-amber-600
+                    {% else %}bg-purple-600{% endif %}"></span>
+                  <span class="text-slate-400 font-mono text-[9px]">{{ ev.time }}</span>
+                  <span class="truncate">{{ ev.title }}</span>
+                </div>
+                {% endfor %}
+              </div>
+
+              <div class="h-1"></div>
+            </div>
+          {% endfor %}
+        {% endfor %}
+
+      </div>
+
+    </div>
+
+    <!-- Volet Latéral Droit (3 cols) : Mini-calendrier, Filtres, Prochains événements -->
+    <div class="lg:col-span-4 xl:col-span-3 space-y-6">
+      
+      <!-- Carte Mini-calendrier & Filtres -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-5 text-xs">
+        
+        <!-- En-tête mini-calendrier -->
+        <div class="flex items-center justify-between font-bold text-slate-800">
+          <span>{{ current_month_name }}</span>
+          <div class="flex items-center gap-1 text-slate-400">
+            <a href="{{ url_for('calendar.calendar_view', year=prev_month_date.year, month=prev_month_date.month) }}" class="hover:text-slate-800 p-1">&lsaquo;</a>
+            <a href="{{ url_for('calendar.calendar_view', year=next_month_date.year, month=next_month_date.month) }}" class="hover:text-slate-800 p-1">&rsaquo;</a>
+          </div>
+        </div>
+
+        <!-- Grille compacte mini-calendrier -->
+        <div class="grid grid-cols-7 gap-1 text-center text-[11px]">
+          <div class="text-slate-400 font-semibold py-1">L</div>
+          <div class="text-slate-400 font-semibold py-1">M</div>
+          <div class="text-slate-400 font-semibold py-1">M</div>
+          <div class="text-slate-400 font-semibold py-1">J</div>
+          <div class="text-slate-400 font-semibold py-1">V</div>
+          <div class="text-slate-400 font-semibold py-1">S</div>
+          <div class="text-slate-400 font-semibold py-1">D</div>
+
+          {% for week in month_days %}
+            {% for day in week %}
+            <div class="py-1 relative">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px]
+                {% if day == today %}bg-blue-600 text-white font-bold shadow-sm
+                {% elif day.month == current_month %}text-slate-700 hover:bg-slate-100
+                {% else %}text-slate-300{% endif %}">
+                {{ day.day }}
+              </span>
+              {% if day.isoformat() in events_by_date and day != today and day.month == current_month %}
+              <span class="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-500"></span>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% endfor %}
+        </div>
+
+        <!-- Filtres d'affichage -->
+        <div class="pt-4 border-t border-slate-100 space-y-3">
+          <div class="font-bold text-slate-800 text-xs">Filtres d'affichage</div>
+
+          <!-- Select Équipe -->
+          <form method="get" class="space-y-3">
+            <select name="team_id" onchange="this.form.submit()"
+                    class="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-medium">
+              <option value="">Toutes les équipes</option>
+              {% for t in teams %}
+              <option value="{{ t.id }}" {% if current_team_id == t.id %}selected{% endif %}>{{ t.name }}</option>
+              {% endfor %}
+            </select>
+
+            <!-- Toggle mes tâches uniquement -->
+            <label class="flex items-center justify-between cursor-pointer pt-1">
+              <span class="text-slate-600 font-medium">Afficher mes tâches uniquement</span>
+              <input type="checkbox" name="mine" value="1" onchange="this.form.submit()" {% if only_mine %}checked{% endif %}
+                     class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4">
+            </label>
+          </form>
+
+          <!-- Légende colorée -->
+          <div class="grid grid-cols-2 gap-2 pt-2 text-[11px] text-slate-600">
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+              <span>Tâche planifiée</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+              <span>Activité imprévue</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <span>Réunion</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <span>Formation</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+              <span>Échéance</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+              <span>Autre</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Carte Prochains Événements -->
+      <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4 text-xs">
+        <div class="flex items-center justify-between font-bold text-slate-800">
+          <span>Prochains événements</span>
+          <a href="{{ url_for('tasks.list_tasks') }}" class="text-[11px] text-blue-600 hover:underline">Voir tout</a>
+        </div>
+
+        <div class="space-y-3">
+          {% for ev in upcoming_events %}
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50/70 border border-slate-100">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex flex-col items-center justify-center shrink-0 shadow-xs">
+                <span class="text-xs font-black text-slate-900 leading-none">{{ ev.date.strftime('%d') }}</span>
+                <span class="text-[9px] uppercase font-bold text-slate-400 leading-none mt-0.5">{{ ev.date.strftime('%b') }}</span>
+              </div>
+              <div>
+                <div class="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                  <span class="truncate max-w-[130px]">{{ ev.title }}</span>
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5">
+                  {{ ev.time }} &bull; {{ ev.team_name }}
+                </div>
+              </div>
+            </div>
+            <div class="w-6 h-6 rounded-full bg-slate-800 text-white font-bold text-[9px] flex items-center justify-center shrink-0">
+              {{ ev.responsible[0] if ev.responsible else 'T' }}
+            </div>
+          </div>
+          {% else %}
+          <div class="text-center py-4 text-slate-400">
+            Aucun événement imminent.
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -43,11 +43,18 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         return render_template("errors/404.html"), 404
 
     @app.context_processor
-    def inject_notifications_count():
+    def inject_globals():
+        from datetime import date, datetime
         from flask_login import current_user
         from .services.notification_service import get_unread_notifications_count
+        unread_count = 0
         if current_user.is_authenticated:
-            return {"unread_notifications_count": get_unread_notifications_count(current_user)}
-        return {"unread_notifications_count": 0}
+            unread_count = get_unread_notifications_count(current_user)
+        return {
+            "unread_notifications_count": unread_count,
+            "today": date.today(),
+            "now": datetime.now(),
+        }
 
     return app
+

@@ -41,12 +41,35 @@ def list_activities():
             .all()
         )
 
+    from ..models import Team
+
+    total_activities = len(activities)
+    resolved_count = sum(1 for a in activities if a.status_label == "Résolue")
+    in_progress_count = sum(1 for a in activities if a.status_label == "En cours")
+    pending_count = sum(1 for a in activities if a.status_label == "En attente")
+
+    resolved_pct = round((resolved_count / total_activities * 100)) if total_activities else 0
+    in_progress_pct = round((in_progress_count / total_activities * 100)) if total_activities else 0
+    pending_pct = round((pending_count / total_activities * 100)) if total_activities else 0
+
+    teams = db.session.query(Team).order_by(Team.name).all()
+
     return render_template(
         "activities/list.html",
         activities=activities,
         selectable_users=selectable_users,
         current_user_id=user_id_filter,
+        total_activities=total_activities,
+        resolved_count=resolved_count,
+        in_progress_count=in_progress_count,
+        pending_count=pending_count,
+        resolved_pct=resolved_pct,
+        in_progress_pct=in_progress_pct,
+        pending_pct=pending_pct,
+        priorities=TaskPriority,
+        teams=teams,
     )
+
 
 
 @activities_blueprint.route("/new", methods=["GET", "POST"])

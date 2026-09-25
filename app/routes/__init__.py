@@ -1,18 +1,20 @@
 from .activities import activities_blueprint
 from .audit import audit_blueprint
 from .auth import auth_blueprint
+from .calendar import calendar_blueprint
 from .dashboard import dashboard_blueprint
 from .health import health_blueprint
 from .history import history_blueprint
 from .monthly_reports import monthly_reports_blueprint
 from .notifications import notifications_blueprint
 from .reports import reports_blueprint
+from .settings import settings_blueprint
 from .tasks import tasks_blueprint
 from .teams import teams_blueprint
 from .users import users_blueprint
 
 
-def register_routes(app: Flask) -> None:
+def register_routes(app) -> None:
     app.register_blueprint(health_blueprint)
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(dashboard_blueprint)
@@ -25,5 +27,7 @@ def register_routes(app: Flask) -> None:
     app.register_blueprint(history_blueprint)
     app.register_blueprint(audit_blueprint)
     app.register_blueprint(notifications_blueprint)
+    app.register_blueprint(calendar_blueprint)
+    app.register_blueprint(settings_blueprint)
 
 
