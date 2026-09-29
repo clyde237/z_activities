@@ -318,7 +318,9 @@ def test_all_user_roles_can_access_and_create_unexpected_activities(client, db):
         _login(client, user.username)
         activities_page = client.get("/activities")
         assert activities_page.status_code == 200
-        assert b'href="/activities/new"' in activities_page.data
+        page_html = activities_page.get_data(as_text=True)
+        create_link_position = page_html.find('href="/activities/new"')
+        assert create_link_position > page_html.find("</header>")
 
         form_page = client.get("/activities/new")
         assert form_page.status_code == 200
