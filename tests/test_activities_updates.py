@@ -301,6 +301,45 @@ def test_member_can_declare_unexpected_activity(client, db):
     assert audit is not None
 
 
+def test_all_user_roles_can_access_and_create_unexpected_activities(client, db):
+    users = [
+        _create_user(db, "activity_collaborator", UserRole.COLLABORATEUR),
+        _create_user(db, "activity_team_lead", UserRole.COLLABORATEUR),
+        _create_user(db, "activity_service_manager", UserRole.CHEF_SERVICE),
+    ]
+    team = Team(name="Équipe activités")
+    db.session.add(team)
+    db.session.flush()
+    db.session.add(UserTeam(user_id=users[1].id, team_id=team.id, is_team_lead=True))
+    db.session.commit()
+
+    today = date.today()
+    for user in users:
+        _login(client, user.username)
+        activities_page = client.get("/activities")
+        assert activities_page.status_code == 200
+        assert b'href="/activities/new"' in activities_page.data
+
+        form_page = client.get("/activities/new")
+        assert form_page.status_code == 200
+        assert b'name="title"' in form_page.data
+
+        response = client.post(
+            "/activities/new",
+            data={
+                "title": f"Activité de {user.username}",
+                "description": "Déclarée depuis le formulaire partagé.",
+                "activity_date": today.strftime("%Y-%m-%d"),
+                "priority": TaskPriority.NORMALE.value,
+            },
+        )
+        assert response.status_code == 302
+
+        created = db.session.query(UnexpectedActivity).filter_by(title=f"Activité de {user.username}").one()
+        assert created.user_id == user.id
+        client.post("/logout")
+
+
 def test_invalid_times_rejected_in_unexpected_activity(client, db):
     """L'heure de fin ne peut pas être antérieure à l'heure de début."""
     member = _create_user(db, "member_time_err", UserRole.COLLABORATEUR)
