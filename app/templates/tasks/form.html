@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "tasks/_objectives_widget.html" import objectives_widget %}
 {% block title %}{{ "Modifier la tâche" if task else "Nouvelle tâche" }}{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto space-y-6">
@@ -30,6 +31,8 @@
                 placeholder="Détails, consignes ou périmètre de l'activité..."
                 class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">{{ form.description if form else (task.description if task and task.description else '') }}</textarea>
     </div>
+
+    {{ objectives_widget('task-objectives', form.getlist('objectives') if form else (task.objectives.splitlines() if task and task.objectives else [])) }}
 
     <!-- Équipe & Responsables -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -123,12 +126,12 @@
     <!-- Champs conditionnels selon Type -->
     <div id="quantitative_fields" class="p-4 rounded-lg bg-slate-50 border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4 hidden">
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-1" for="objective">Objectif quantitatif *</label>
+        <label class="block text-sm font-medium text-slate-700 mb-1" for="objective">Cible quantitative (optionnelle)</label>
         <input id="objective" name="objective" type="number" step="any" min="0.1"
                value="{{ form.objective if form else (task.objective if task and task.objective else '') }}"
                placeholder="Ex: 200 (factures, lignes...)"
                class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-900">
-        <p class="text-[11px] text-slate-400 mt-1">Nombre d'unités à réaliser.</p>
+        <p class="text-[11px] text-slate-400 mt-1">Nombre d'unités à réaliser. Sans cible, la progression reste à 0 %.</p>
       </div>
       <div>
         <label class="block text-sm font-medium text-slate-700 mb-1" for="realized">Quantité déjà réalisée</label>

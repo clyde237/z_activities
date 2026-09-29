@@ -70,6 +70,35 @@ def test_chef_service_can_create_qualitative_task(client, db):
     assert audit is not None
 
 
+def test_chef_service_task_modal_renders_assignment_and_required_dates(client, db):
+    chef = _create_user(db, "chef_task_modal", UserRole.CHEF_SERVICE)
+    member = _create_user(db, "member_task_modal")
+    team = Team(name="Équipe modal")
+    db.session.add(team)
+    db.session.flush()
+    db.session.add(UserTeam(user_id=member.id, team_id=team.id))
+    db.session.commit()
+
+    _login(client, "chef_task_modal")
+
+    response = client.get("/tasks")
+
+    assert response.status_code == 200
+    assert b'data-task-tab="assignment"' in response.data
+    assert b'id="createTaskPanelAssignment"' in response.data
+    assert b'name="responsible_id" id="modalMemberSelect" required' in response.data
+    assert b'name="start_date" required' in response.data
+    assert b'name="due_date" required' in response.data
+    assert b'data-objectives-widget' in response.data
+    assert b'data-objective-add' in response.data
+    assert b'data-objective-remove' in response.data
+
+    create_form_response = client.get("/tasks/new")
+    assert create_form_response.status_code == 200
+    assert b'aria-label="Objectif 1"' in create_form_response.data
+    assert b'data-objective-add' in create_form_response.data
+
+
 def test_quantitative_task_progress_auto_computed(client, db):
     chef = _create_user(db, "chef_quant", UserRole.CHEF_SERVICE)
     member = _create_user(db, "member_quant", UserRole.COLLABORATEUR)
@@ -104,6 +133,46 @@ def test_quantitative_task_progress_auto_computed(client, db):
     assert task.objective == 200.0
     assert task.realized == 50.0
     assert task.progress == 25.0  # (50 / 200) * 100
+
+
+def test_quantitative_task_can_have_optional_custom_objectives(client, db):
+    _create_user(db, "chef_optional_objectives", UserRole.CHEF_SERVICE)
+    member = _create_user(db, "member_optional_objectives")
+    team = Team(name="Équipe objectifs facultatifs")
+    db.session.add(team)
+    db.session.flush()
+    db.session.add(UserTeam(user_id=member.id, team_id=team.id))
+    db.session.commit()
+
+    _login(client, "chef_optional_objectives")
+
+    today = date.today()
+    response = client.post(
+        "/tasks/new",
+        data={
+            "title": "Tâche avec objectifs personnalisés",
+            "team_id": team.id,
+            "responsible_id": member.id,
+            "start_date": today.strftime("%Y-%m-%d"),
+            "due_date": (today + timedelta(days=5)).strftime("%Y-%m-%d"),
+            "priority": TaskPriority.NORMALE.value,
+            "task_type": TaskType.QUANTITATIVE.value,
+            "objectives": [
+                "Réviser les procédures.",
+                "Documenter les écarts.",
+            ],
+        },
+        follow_redirects=True,
+    )
+
+    task = db.session.query(Task).filter_by(title="Tâche avec objectifs personnalisés").one()
+    assert response.status_code == 200
+    assert task.objectives == "Réviser les procédures.\nDocumenter les écarts."
+    assert task.objective is None
+    assert task.progress == 0.0
+    assert "Réviser les procédures.".encode() in response.data
+    assert "Documenter les écarts.".encode() in response.data
+    assert b"Rapprocher tous les mouvements bancaires" not in response.data
 
 
 def test_team_lead_can_create_task_for_own_team(client, db):

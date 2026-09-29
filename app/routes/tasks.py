@@ -119,6 +119,7 @@ def create_new_task():
         co_responsible_id = request.form.get("co_responsible_id", type=int)
         title = request.form.get("title", "").strip()
         description = request.form.get("description", "").strip()
+        objectives = request.form.getlist("objectives")
         priority = request.form.get("priority", TaskPriority.NORMALE.value)
         task_type = request.form.get("task_type", TaskType.QUALITATIVE.value)
         objective = request.form.get("objective")
@@ -146,6 +147,7 @@ def create_new_task():
         data = {
             "title": title,
             "description": description,
+            "objectives": objectives,
             "team_id": team_id,
             "responsible_id": responsible_id,
             "co_responsible_id": co_responsible_id,
@@ -240,6 +242,7 @@ def edit_task_route(task_id: int):
         co_responsible_id = request.form.get("co_responsible_id", type=int)
         title = request.form.get("title", "").strip()
         description = request.form.get("description", "").strip()
+        objectives = request.form.getlist("objectives")
         priority = request.form.get("priority", task.priority.value)
         task_type = request.form.get("task_type", task.task_type.value)
         objective = request.form.get("objective")
@@ -268,6 +271,7 @@ def edit_task_route(task_id: int):
         data = {
             "title": title,
             "description": description,
+            "objectives": objectives,
             "team_id": team_id,
             "responsible_id": responsible_id,
             "co_responsible_id": co_responsible_id,

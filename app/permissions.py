@@ -74,11 +74,8 @@ def can_edit_task(user: User, task) -> bool:
 
 
 def can_update_task_progress(user: User, task) -> bool:
-    """Le responsable ou le co-responsable peut renseigner l'avancement
-    (RB-008, RB-009), en plus des rôles d'encadrement."""
-    if can_edit_task(user, task):
-        return True
-    return user.id in {task.responsible_id, task.co_responsible_id}
+    """Seul le responsable principal désigné peut renseigner l'avancement."""
+    return user.id == task.responsible_id
 
 
 def can_view_report(user: User, report) -> bool:

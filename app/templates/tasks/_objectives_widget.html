@@ -1,0 +1,60 @@
+{% macro objectives_widget(widget_id, initial_values=[]) %}
+{% set rows = initial_values or [''] %}
+<div id="{{ widget_id }}" data-objectives-widget class="space-y-2">
+  <label class="block text-sm font-medium text-slate-700">Objectifs (optionnel)</label>
+  <div data-objective-rows class="space-y-2">
+    {% for value in rows %}
+    <div data-objective-row class="flex items-center gap-2">
+      <input type="text" name="objectives" value="{{ value }}" aria-label="Objectif {{ loop.index }}" placeholder="Saisir un objectif..."
+             class="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-900">
+      <button type="button" data-objective-remove title="Retirer cet objectif" aria-label="Retirer cet objectif"
+              class="h-9 w-9 shrink-0 rounded-md border border-slate-300 text-slate-700 hover:bg-slate-100">−</button>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" data-objective-add
+          class="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+    <span aria-hidden="true" class="text-lg leading-none">+</span>
+    <span>Ajouter un objectif</span>
+  </button>
+</div>
+<script>
+  function labelObjectiveRows(rows) {
+    rows.querySelectorAll('[data-objective-row] input[name="objectives"]').forEach((input, index) => {
+      input.setAttribute('aria-label', `Objectif ${index + 1}`);
+    });
+  }
+
+  document.addEventListener('click', function(event) {
+    const addButton = event.target.closest('[data-objective-add]');
+    if (addButton) {
+      const widget = addButton.closest('[data-objectives-widget]');
+      const rows = widget.querySelector('[data-objective-rows]');
+      const newRow = rows.querySelector('[data-objective-row]').cloneNode(true);
+      const input = newRow.querySelector('input[name="objectives"]');
+      input.value = '';
+      rows.appendChild(newRow);
+      labelObjectiveRows(rows);
+      input.focus();
+      return;
+    }
+
+    const removeButton = event.target.closest('[data-objective-remove]');
+    if (removeButton) {
+      const rows = removeButton.closest('[data-objective-rows]');
+      const row = removeButton.closest('[data-objective-row]');
+      if (rows.children.length === 1) {
+        const input = row.querySelector('input[name="objectives"]');
+        input.value = '';
+        input.focus();
+      } else {
+        const nextInput = row.nextElementSibling?.querySelector('input[name="objectives"]')
+          || row.previousElementSibling?.querySelector('input[name="objectives"]');
+        row.remove();
+        labelObjectiveRows(rows);
+        nextInput?.focus();
+      }
+    }
+  });
+</script>
+{% endmacro %}

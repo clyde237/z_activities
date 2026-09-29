@@ -33,6 +33,12 @@ def validate_and_build_task_data(
 
     title = data.get("title", "").strip()
     description = data.get("description", "").strip()
+    objective_values = data.get("objectives") or []
+    if isinstance(objective_values, str):
+        objective_values = objective_values.splitlines()
+    objectives = "\n".join(
+        value.strip() for value in objective_values if value and value.strip()
+    )
     team_id = data.get("team_id")
     responsible_id = data.get("responsible_id")
     co_responsible_id = data.get("co_responsible_id")
@@ -99,12 +105,13 @@ def validate_and_build_task_data(
     clean_progress = 0.0
 
     if task_type == TaskType.QUANTITATIVE:
-        try:
-            clean_objective = float(objective_val) if objective_val is not None else None
-            if clean_objective is None or clean_objective <= 0:
-                errors.append("Pour une tâche quantitative, l'objectif doit être un nombre strictement positif.")
-        except (ValueError, TypeError):
-            errors.append("L'objectif quantitatif doit être une valeur numérique valide.")
+        if objective_val not in (None, ""):
+            try:
+                clean_objective = float(objective_val)
+                if clean_objective <= 0:
+                    errors.append("L'objectif quantitatif doit être un nombre strictement positif.")
+            except (ValueError, TypeError):
+                errors.append("L'objectif quantitatif doit être une valeur numérique valide.")
 
         try:
             clean_realized = float(realized_val) if realized_val else 0.0
@@ -143,6 +150,7 @@ def validate_and_build_task_data(
     return {
         "title": title,
         "description": description or None,
+        "objectives": objectives or None,
         "team_id": team_id,
         "responsible_id": responsible_id,
         "co_responsible_id": co_responsible_id or None,

@@ -30,6 +30,7 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
+    objectives = db.Column(db.Text)
     team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), nullable=False)
     responsible_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     co_responsible_id = db.Column(db.Integer, db.ForeignKey("users.id"))

@@ -101,6 +101,58 @@ def test_member_can_add_task_update_and_triggers_auto_transition(client, db):
     assert audit is not None
 
 
+def test_only_primary_responsible_can_update_task_progress(client, db):
+    responsible = _create_user(db, "update_primary", UserRole.COLLABORATEUR)
+    co_responsible = _create_user(db, "update_co", UserRole.COLLABORATEUR)
+    team_lead = _create_user(db, "update_lead", UserRole.COLLABORATEUR)
+    service_manager = _create_user(db, "update_manager", UserRole.CHEF_SERVICE)
+    team = Team(name="Équipe responsable principal")
+    db.session.add(team)
+    db.session.flush()
+    db.session.add_all(
+        [
+            UserTeam(user_id=responsible.id, team_id=team.id),
+            UserTeam(user_id=co_responsible.id, team_id=team.id),
+            UserTeam(user_id=team_lead.id, team_id=team.id, is_team_lead=True),
+        ]
+    )
+
+    today = date.today()
+    task = Task(
+        title="Mise à jour réservée au responsable principal",
+        team_id=team.id,
+        responsible_id=responsible.id,
+        co_responsible_id=co_responsible.id,
+        start_date=today,
+        due_date=today + timedelta(days=3),
+        priority=TaskPriority.NORMALE,
+        task_type=TaskType.QUALITATIVE,
+        status=TaskStatus.EN_COURS,
+    )
+    db.session.add(task)
+    db.session.commit()
+
+    _login(client, "update_primary")
+    responsible_detail = client.get(f"/tasks/{task.id}")
+    update_button = b'<button onclick="document.getElementById(\'updateTaskModal\').showModal()"'
+    assert update_button in responsible_detail.data
+
+    for username in ("update_co", "update_lead", "update_manager"):
+        client.post("/logout")
+        _login(client, username)
+        detail = client.get(f"/tasks/{task.id}")
+        assert detail.status_code == 200
+        assert update_button not in detail.data
+
+        response = client.post(
+            f"/tasks/{task.id}/updates",
+            data={"work_done": "Tentative non autorisée", "progress": "50"},
+        )
+        assert response.status_code == 403
+
+    assert len(task.updates) == 0
+
+
 def test_quantitative_update_recomputes_progress(client, db):
     """Pour une tâche quantitative, le cumul réalisé recalcule la progression."""
     member = _create_user(db, "member_quant_up", UserRole.COLLABORATEUR)
