@@ -130,6 +130,7 @@ def test_chef_service_can_access_batch_weekly_and_monthly_generation(client, db)
     html = response.get_data(as_text=True)
     assert 'action="/reports/generate-all"' in html
     assert 'href="/monthly-reports"' in html
+    assert html.index('action="/reports/generate-all"') > html.index("</header>")
 
 
 def test_collaborator_does_not_see_manager_generation_controls(client, db):
