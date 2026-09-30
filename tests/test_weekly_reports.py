@@ -119,6 +119,48 @@ def test_flask_cli_generate_weekly_reports(app, db):
     assert "Génération terminée" in result.output
 
 
+def test_chef_service_can_access_batch_weekly_and_monthly_generation(client, db):
+    _create_user(db, "chef_batch_ui", role=UserRole.CHEF_SERVICE)
+    _create_user(db, "member_batch_ui")
+
+    _login(client, "chef_batch_ui")
+    response = client.get("/reports")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'action="/reports/generate-all"' in html
+    assert 'href="/monthly-reports"' in html
+
+
+def test_collaborator_does_not_see_manager_generation_controls(client, db):
+    _create_user(db, "member_report_controls")
+
+    _login(client, "member_report_controls")
+    response = client.get("/reports")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'action="/reports/generate-all"' not in html
+    assert 'href="/monthly-reports"' not in html
+
+
+def test_chef_service_generates_weekly_reports_for_members(client, db):
+    _create_user(db, "chef_weekly_batch", role=UserRole.CHEF_SERVICE)
+    member = _create_user(db, "member_weekly_batch")
+
+    _login(client, "chef_weekly_batch")
+    response = client.post("/reports/generate-all")
+
+    assert response.status_code == 302
+    report = (
+        db.session.query(WeeklyReport)
+        .filter_by(user_id=member.id, period_start=get_week_bounds()[0])
+        .one_or_none()
+    )
+    assert report is not None
+    assert report.status == WeeklyReportStatus.BROUILLON
+
+
 # ---------------------------------------------------------
 # 2. Agrégation des données du rapport (Section 16 CDC)
 # ---------------------------------------------------------

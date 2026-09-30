@@ -169,6 +169,19 @@ def test_monthly_report_permissions(client, db):
     assert resp_chef_edit.status_code == 200
     assert "Ajustement du rapport mensuel" in resp_chef_edit.get_data(as_text=True)
 
+    resp_generate = client.post(
+        "/monthly-reports/generate",
+        data={"year": 2026, "month": 1},
+    )
+    assert resp_generate.status_code == 302
+    generated_report = (
+        db.session.query(MonthlyReport)
+        .filter_by(year=2026, month=1)
+        .one_or_none()
+    )
+    assert generated_report is not None
+    assert generated_report.created_by_id == chef.id
+
 
 def test_monthly_report_adjustment_and_finalization_workflow(client, db):
     """Test du cycle d'ajustement rédactionnel, finalisation et réouverture (RB-027)."""

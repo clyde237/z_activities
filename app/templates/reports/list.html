@@ -20,6 +20,24 @@
     <span>{{ current_week_start.strftime('%d %b.') }} - {{ current_week_end.strftime('%d %b. %Y') }}</span>
   </div>
 
+  {% if current_user.is_chef_service() %}
+  <div class="flex items-center gap-2">
+    <form method="post" action="{{ url_for('reports.generate_all_reports') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit"
+              class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+        </svg>
+        <span>Générer les rapports de l'équipe</span>
+      </button>
+    </form>
+    <a href="{{ url_for('monthly_reports.list_monthly_reports') }}"
+       class="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold px-4 py-2.5 rounded-xl border border-slate-200 transition-all">
+      <span>Rapports mensuels</span>
+    </a>
+  </div>
+  {% else %}
   <form method="post" action="{{ url_for('reports.generate_current_report') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit"
@@ -27,9 +45,10 @@
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
       </svg>
-      <span>Générer un rapport</span>
+      <span>Générer mon rapport</span>
     </button>
   </form>
+  {% endif %}
 </div>
 {% endblock %}
 
